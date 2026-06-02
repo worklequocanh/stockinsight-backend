@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  WAREHOUSE_MANAGER
+  EMPLOYEE
+}
+
+enum ReceiptStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExportType {
+  SALE
+  INTERNAL
+  DAMAGED
+  TRANSFER
+}
+
+model User {
+  id                    String          @id @default(uuid())
+  name                  String
+  email                 String          @unique
+  password              String
+  role                  Role            @default(EMPLOYEE)
+  createdImportReceipts  ImportReceipt[] @relation("ImportCreatedBy")
+  approvedImportReceipts ImportReceipt[] @relation("ImportApprovedBy")
+  createdExportReceipts  ExportReceipt[] @relation("ExportCreatedBy")
+  approvedExportReceipts ExportReceipt[] @relation("ExportApprovedBy")
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Supplier {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  phone     String?
+  email     String?
+  address   String?
+  products  Product[]
+  importReceipts ImportReceipt[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id           String       @id @default(uuid())
+  sku          String       @unique
+  barcode      String?      @unique
+  name         String
+  unit         String
+  minStock     Int          @default(0)
+  costPrice    Decimal      @db.Decimal(12, 2)
+  salePrice    Decimal      @db.Decimal(12, 2)
+  currentStock  Int          @default(0)
+  categoryId   String
+  supplierId   String
+  category     Category     @relation(fields: [categoryId], references: [id])
+  supplier     Supplier     @relation(fields: [supplierId], references: [id])
+  stockBatches StockBatch[]
+  importItems  ImportItem[]
+  exportItems  ExportItem[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([categoryId])
+  @@index([supplierId])
+}
+
+model StockBatch {
+  id                String       @id @default(uuid())
+  productId         String
+  lotNumber         String
+  expiryDate        DateTime
+  quantity          Int
+  remainingQuantity Int
+  product           Product      @relation(fields: [productId], references: [id])
+  importItem        ImportItem?
+  exportItems       ExportItem[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([productId, expiryDate])
+}
+
+model ImportReceipt {
+  id             String          @id @default(uuid())
+  code           String          @unique
+  supplierId     String
+  status         ReceiptStatus   @default(PENDING)
+  note           String?
+  createdById    String
+  approvedById   String?
+  rejectedReason String?
+  approvedAt     DateTime?
+  supplier       Supplier        @relation(fields: [supplierId], references: [id])
+  createdBy      User            @relation("ImportCreatedBy", fields: [createdById], references: [id])
+  approvedBy     User?           @relation("ImportApprovedBy", fields: [approvedById], references: [id])
+  items          ImportItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([supplierId, status])
+}
+
+model ImportItem {
+  id              String        @id @default(uuid())
+  importReceiptId String
+  productId       String
+  quantity        Int
+  unitPrice       Decimal       @db.Decimal(12, 2)
+  lotNumber       String
+  expiryDate      DateTime
+  batchId         String?       @unique
+  importReceipt   ImportReceipt @relation(fields: [importReceiptId], references: [id])
+  product         Product       @relation(fields: [productId], references: [id])
+  batch           StockBatch?   @relation(fields: [batchId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([importReceiptId])
+  @@index([productId])
+}
+
+model ExportReceipt {
+  id             String          @id @default(uuid())
+  code           String          @unique
+  exportType     ExportType
+  status         ReceiptStatus   @default(PENDING)
+  note           String?
+  createdById    String
+  approvedById   String?
+  rejectedReason String?
+  approvedAt     DateTime?
+  createdBy      User            @relation("ExportCreatedBy", fields: [createdById], references: [id])
+  approvedBy     User?           @relation("ExportApprovedBy", fields: [approvedById], references: [id])
+  items          ExportItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([exportType, status])
+}
+
+model ExportItem {
+  id             String        @id @default(uuid())
+  exportReceiptId String
+  productId      String
+  stockBatchId   String
+  quantity       Int
+  unitPrice      Decimal       @db.Decimal(12, 2)
+  exportReceipt  ExportReceipt @relation(fields: [exportReceiptId], references: [id])
+  product        Product       @relation(fields: [productId], references: [id])
+  stockBatch     StockBatch    @relation(fields: [stockBatchId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([exportReceiptId])
+  @@index([productId])
+  @@index([stockBatchId])
+}
