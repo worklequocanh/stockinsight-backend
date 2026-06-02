@@ -49,6 +49,27 @@ npm run dev
 - `GET /api/protected/warehouse`
 - `GET /api/protected/employee`
 
+## Phase 3 Master Data APIs
+- `GET /api/categories`
+- `POST /api/categories`
+- `GET /api/categories/:id`
+- `PUT /api/categories/:id`
+- `DELETE /api/categories/:id`
+- `GET /api/suppliers`
+- `POST /api/suppliers`
+- `GET /api/suppliers/:id`
+- `PUT /api/suppliers/:id`
+- `DELETE /api/suppliers/:id`
+- `GET /api/products`
+- `POST /api/products`
+- `GET /api/products/:id`
+- `PUT /api/products/:id`
+- `DELETE /api/products/:id`
+
+Query support:
+- Categories and suppliers support `search`, `page`, `limit`
+- Products support `search`, `categoryId`, `supplierId`, `page`, `limit`
+
 ## Tài khoản seed
 - `admin@stockinsight.local` / `admin123`
 - `manager@stockinsight.local` / `admin123`
