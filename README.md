@@ -73,6 +73,13 @@ npm run dev
 - `POST /api/imports/:id/approve`
 - `POST /api/imports/:id/reject`
 
+## Phase 5 Export Data APIs (FEFO)
+- `GET /api/exports`
+- `POST /api/exports` (Tự động chia lô FEFO)
+- `GET /api/exports/:id`
+- `POST /api/exports/:id/approve`
+- `POST /api/exports/:id/reject`
+
 Query support:
 - Categories and suppliers support `search`, `page`, `limit`
 - Products support `search`, `categoryId`, `supplierId`, `page`, `limit`
