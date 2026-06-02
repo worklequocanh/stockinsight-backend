@@ -1,0 +1,250 @@
+const prisma = require('../config/prisma');
+const { sendError, sendSuccess } = require('../utils/apiResponse');
+const { mapPrismaError } = require('../utils/prismaError');
+const { normalizeSearch, toPositiveInt } = require('../utils/request');
+const { ReceiptStatus } = require('@prisma/client');
+
+function generateReceiptCode() {
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `IMP-${timestamp}-${random}`;
+}
+
+async function listImports(req, res, next) {
+  try {
+    const search = normalizeSearch(req.query.search);
+    const status = req.query.status;
+    const page = toPositiveInt(req.query.page, 1);
+    const limit = Math.min(toPositiveInt(req.query.limit, 10), 100);
+    const skip = (page - 1) * limit;
+
+    const where = {};
+    if (search) {
+      where.code = { contains: search, mode: 'insensitive' };
+    }
+    if (status && Object.values(ReceiptStatus).includes(status)) {
+      where.status = status;
+    }
+
+    const [items, total] = await Promise.all([
+      prisma.importReceipt.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          supplier: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
+          approvedBy: { select: { id: true, name: true } },
+        },
+      }),
+      prisma.importReceipt.count({ where }),
+    ]);
+
+    return sendSuccess(res, {
+      items,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function getImportById(req, res, next) {
+  try {
+    const { id } = req.params;
+    const item = await prisma.importReceipt.findUnique({
+      where: { id },
+      include: {
+        supplier: true,
+        createdBy: { select: { id: true, name: true } },
+        approvedBy: { select: { id: true, name: true } },
+        items: {
+          include: {
+            product: true,
+            batch: true,
+          }
+        },
+      },
+    });
+
+    if (!item) {
+      return sendError(res, 'Import receipt not found', 404);
+    }
+
+    return sendSuccess(res, { item });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function createImport(req, res, next) {
+  try {
+    const supplierId = String(req.body?.supplierId || '').trim();
+    const note = String(req.body?.note || '').trim();
+    const items = req.body?.items || [];
+    const userId = req.user.id;
+
+    if (!supplierId || !items.length) {
+      return sendError(res, 'Supplier and at least one item are required', 400);
+    }
+
+    for (const item of items) {
+      if (!item.productId || !item.quantity || !item.unitPrice || !item.lotNumber || !item.expiryDate) {
+        return sendError(res, 'Invalid item format. Required: productId, quantity, unitPrice, lotNumber, expiryDate', 400);
+      }
+      if (item.quantity <= 0 || item.unitPrice < 0) {
+        return sendError(res, 'Quantity and unit price must be positive', 400);
+      }
+    }
+
+    const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
+    if (!supplier) {
+      return sendError(res, 'Supplier not found', 400);
+    }
+
+    const receipt = await prisma.importReceipt.create({
+      data: {
+        code: generateReceiptCode(),
+        supplierId,
+        note: note || null,
+        createdById: userId,
+        status: ReceiptStatus.PENDING,
+        items: {
+          create: items.map(i => ({
+            productId: i.productId,
+            quantity: Number(i.quantity),
+            unitPrice: Number(i.unitPrice),
+            lotNumber: String(i.lotNumber),
+            expiryDate: new Date(i.expiryDate),
+          })),
+        }
+      },
+      include: { items: true }
+    });
+
+    return sendSuccess(res, { item: receipt }, 'Import receipt created', 201);
+  } catch (error) {
+    const mapped = mapPrismaError(error);
+    if (mapped) {
+      return sendError(res, mapped.message, mapped.statusCode);
+    }
+    return next(error);
+  }
+}
+
+async function approveImport(req, res, next) {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const receipt = await prisma.importReceipt.findUnique({
+      where: { id },
+      include: { items: true }
+    });
+
+    if (!receipt) {
+      return sendError(res, 'Import receipt not found', 404);
+    }
+
+    if (receipt.status !== ReceiptStatus.PENDING) {
+      return sendError(res, 'Receipt is not in PENDING status', 400);
+    }
+
+    // Transaction to ensure atomicity
+    await prisma.$transaction(async (tx) => {
+      // 1. Update status
+      await tx.importReceipt.update({
+        where: { id },
+        data: {
+          status: ReceiptStatus.APPROVED,
+          approvedById: userId,
+          approvedAt: new Date(),
+        }
+      });
+
+      // 2. Process items
+      for (const item of receipt.items) {
+        // Update product stock
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            currentStock: { increment: item.quantity }
+          }
+        });
+
+        // Create stock batch
+        const batch = await tx.stockBatch.create({
+          data: {
+            productId: item.productId,
+            lotNumber: item.lotNumber,
+            expiryDate: item.expiryDate,
+            quantity: item.quantity,
+            remainingQuantity: item.quantity,
+          }
+        });
+
+        // Link batch to item
+        await tx.importItem.update({
+          where: { id: item.id },
+          data: { batchId: batch.id }
+        });
+      }
+    });
+
+    return sendSuccess(res, null, 'Import receipt approved successfully');
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function rejectImport(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    const userId = req.user.id;
+
+    if (!reason) {
+      return sendError(res, 'Reason is required to reject', 400);
+    }
+
+    const receipt = await prisma.importReceipt.findUnique({
+      where: { id },
+    });
+
+    if (!receipt) {
+      return sendError(res, 'Import receipt not found', 404);
+    }
+
+    if (receipt.status !== ReceiptStatus.PENDING) {
+      return sendError(res, 'Receipt is not in PENDING status', 400);
+    }
+
+    await prisma.importReceipt.update({
+      where: { id },
+      data: {
+        status: ReceiptStatus.REJECTED,
+        rejectedReason: reason,
+        approvedById: userId,
+        approvedAt: new Date(),
+      }
+    });
+
+    return sendSuccess(res, null, 'Import receipt rejected');
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = {
+  listImports,
+  getImportById,
+  createImport,
+  approveImport,
+  rejectImport,
+};

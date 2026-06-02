@@ -66,6 +66,13 @@ npm run dev
 - `PUT /api/products/:id`
 - `DELETE /api/products/:id`
 
+## Phase 4 Import Data APIs
+- `GET /api/imports`
+- `POST /api/imports`
+- `GET /api/imports/:id`
+- `POST /api/imports/:id/approve`
+- `POST /api/imports/:id/reject`
+
 Query support:
 - Categories and suppliers support `search`, `page`, `limit`
 - Products support `search`, `categoryId`, `supplierId`, `page`, `limit`
