@@ -14,7 +14,7 @@ function errorHandler(error, req, res, next) {
     console.error(error);
   }
 
-  return sendError(res, message, statusCode);
+  return sendError(res, message, statusCode, error.errors);
 }
 
 module.exports = {

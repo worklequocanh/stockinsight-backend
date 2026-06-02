@@ -1,63 +1,66 @@
 # StockInsight Backend
 
-Dự án Backend cho hệ thống quản lý hàng hóa và phân tích bán hàng StockInsight, được xây dựng bằng Node.js, Express, và Prisma.
+Backend cho hệ thống quản lý hàng hóa và phân tích bán hàng StockInsight.
 
-## Công nghệ sử dụng
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database ORM**: Prisma (PostgreSQL)
-- **Authentication**: JWT, bcryptjs
-- **Middleware**: Cors, Helmet, Morgan, Error Handler
+## Tech Stack
+- Node.js
+- Express
+- Prisma
+- PostgreSQL
+- JWT
+- bcryptjs
 
-## Cấu trúc thư mục chính
+## Cấu trúc chính
 ```text
-├── prisma/               # Cấu hình Prisma schema và Database seed
-├── src/
-│   ├── config/           # Cấu hình môi trường và kết nối DB
-│   ├── controllers/      # Xử lý logic nghiệp vụ cho các API route
-│   ├── middleware/       # Bộ lọc xử lý request và handle lỗi
-│   ├── routes/           # Định tuyến các API endpoint
-│   ├── utils/            # Các hàm tiện ích (ApiResponse, v.v.)
-│   ├── app.js            # Cấu hình Express app
-│   └── server.js         # Entry point khởi tạo server
+prisma/          schema, migration, seed
+src/config/      env, prisma client
+src/controllers/ business logic
+src/middleware/  auth, error handler
+src/routes/      API routes
+src/utils/       helper functions
 ```
 
-## Yêu cầu môi trường
-Tạo file `.env` ở thư mục gốc dự án dựa trên file `.env.example`:
+## Cài đặt môi trường
+Tạo file `.env` trong thư mục backend:
 ```ini
 PORT=3001
 NODE_ENV=development
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/stockinsight?schema=public"
-JWT_SECRET="your-secret-key"
+JWT_SECRET="change-me-in-production"
 CORS_ORIGIN="http://localhost:5173"
 ```
 
-## Cài đặt và Khởi chạy
+## Chạy project
+```bash
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run dev
+```
 
-1. **Cài đặt các gói phụ thuộc**:
-   ```bash
-   npm install
-   ```
+## Phase 2 Auth APIs
+- `POST /api/auth/login`
+- `GET /api/auth/me`
 
-2. **Cấu hình Database và sinh Client**:
-   Chạy các lệnh Prisma để thiết lập database:
-   ```bash
-   # Tạo migrations và cập nhật cơ sở dữ liệu
-   npm run prisma:migrate
+## Route kiểm tra phân quyền
+- `GET /api/protected/auth`
+- `GET /api/protected/admin`
+- `GET /api/protected/warehouse`
+- `GET /api/protected/employee`
 
-   # Sinh Prisma Client
-   npm run prisma:generate
+## Tài khoản seed
+- `admin@stockinsight.local` / `admin123`
+- `manager@stockinsight.local` / `admin123`
+- `employee@stockinsight.local` / `admin123`
 
-   # Nạp dữ liệu mẫu ban đầu (seeding)
-   npm run prisma:seed
-   ```
+## Health check
+- `GET /api/health`
 
-3. **Khởi chạy ứng dụng**:
-   - Ở chế độ Development (tự động tải lại khi đổi code):
-     ```bash
-     npm run dev
-     ```
-   - Ở chế độ Production:
-     ```bash
-     npm run start
-     ```
+## Ghi chú
+- Backend dùng chuẩn response:
+  - `success`
+  - `message`
+  - `data`
+- Token JWT được gửi qua header:
+  - `Authorization: Bearer <token>`
