@@ -1,7 +1,5 @@
-const { PrismaClient } = require('@prisma/client')
+const prisma = require('../config/prisma')
 const { sendSuccess, sendError } = require('../utils/apiResponse')
-
-const prisma = new PrismaClient()
 
 // Tính toán KPI Tổng quan
 exports.getDashboardKPI = async (req, res) => {
@@ -37,14 +35,14 @@ exports.getDashboardKPI = async (req, res) => {
       }
     })
 
-    sendSuccess(res, 200, 'Lấy KPI thành công', {
+    sendSuccess(res, {
       totalProducts,
       totalStockValue,
       lowStockProducts,
       expiringBatches
-    })
+    }, 'Lấy KPI thành công')
   } catch (err) {
-    sendError(res, 500, 'Lỗi khi lấy KPI tổng quan', err.message)
+    sendError(res, 'Lỗi khi lấy KPI tổng quan', 500, err.message)
   }
 }
 
@@ -105,9 +103,9 @@ exports.getMonthlyReport = async (req, res) => {
       exportValue: d.exportValue
     }))
 
-    sendSuccess(res, 200, 'Lấy báo cáo theo tháng thành công', result)
+    sendSuccess(res, result, 'Lấy báo cáo theo tháng thành công')
   } catch (err) {
-    sendError(res, 500, 'Lỗi khi lấy báo cáo theo tháng', err.message)
+    sendError(res, 'Lỗi khi lấy báo cáo theo tháng', 500, err.message)
   }
 }
 
@@ -149,9 +147,9 @@ exports.getTopSelling = async (req, res) => {
       }
     })
 
-    sendSuccess(res, 200, 'Lấy báo cáo sản phẩm bán chạy thành công', result)
+    sendSuccess(res, result, 'Lấy báo cáo sản phẩm bán chạy thành công')
   } catch (err) {
-    sendError(res, 500, 'Lỗi khi lấy top sản phẩm bán chạy', err.message)
+    sendError(res, 'Lỗi khi lấy top sản phẩm bán chạy', 500, err.message)
   }
 }
 
@@ -200,9 +198,9 @@ exports.getInventoryReport = async (req, res) => {
       }
     })
 
-    sendSuccess(res, 200, 'Lấy báo cáo tồn kho thành công', result)
+    sendSuccess(res, result, 'Lấy báo cáo tồn kho thành công')
   } catch (err) {
-    sendError(res, 500, 'Lỗi khi lấy báo cáo tồn kho', err.message)
+    sendError(res, 'Lỗi khi lấy báo cáo tồn kho', 500, err.message)
   }
 }
 
@@ -247,8 +245,8 @@ exports.getExpiringBatches = async (req, res) => {
       }
     })
 
-    sendSuccess(res, 200, 'Lấy lô hàng sắp hết hạn thành công', result)
+    sendSuccess(res, result, 'Lấy lô hàng sắp hết hạn thành công')
   } catch (err) {
-    sendError(res, 500, 'Lỗi khi lấy lô hàng sắp hết hạn', err.message)
+    sendError(res, 'Lỗi khi lấy lô hàng sắp hết hạn', 500, err.message)
   }
 }
