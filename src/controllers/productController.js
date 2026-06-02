@@ -41,11 +41,11 @@ async function validateProductRefs({ categoryId, supplierId }) {
   ]);
 
   if (!category) {
-    return 'Category not found';
+    return 'Không tìm thấy danh mục';
   }
 
   if (!supplier) {
-    return 'Supplier not found';
+    return 'Không tìm thấy nhà cung cấp';
   }
 
   return null;
@@ -107,7 +107,7 @@ async function getProductById(req, res, next) {
     });
 
     if (!item) {
-      return sendError(res, 'Product not found', 404);
+      return sendError(res, 'Không tìm thấy sản phẩm', 404);
     }
 
     return sendSuccess(res, { item });
@@ -130,14 +130,14 @@ async function createProduct(req, res, next) {
     const currentStock = parseNumber(req.body?.currentStock, 0);
 
     if (!sku || !name || !unit || !categoryId || !supplierId || costPrice === null || salePrice === null) {
-      return sendError(res, 'Required fields are missing', 400, [
-        { field: 'sku', message: 'SKU is required' },
-        { field: 'name', message: 'Name is required' },
-        { field: 'unit', message: 'Unit is required' },
-        { field: 'categoryId', message: 'Category is required' },
-        { field: 'supplierId', message: 'Supplier is required' },
-        { field: 'costPrice', message: 'Cost price is required' },
-        { field: 'salePrice', message: 'Sale price is required' },
+      return sendError(res, 'Vui lòng điền đầy đủ các thông tin bắt buộc', 400, [
+        { field: 'sku', message: 'SKU là bắt buộc' },
+        { field: 'name', message: 'Tên sản phẩm là bắt buộc' },
+        { field: 'unit', message: 'Đơn vị tính là bắt buộc' },
+        { field: 'categoryId', message: 'Danh mục là bắt buộc' },
+        { field: 'supplierId', message: 'Nhà cung cấp là bắt buộc' },
+        { field: 'costPrice', message: 'Giá vốn là bắt buộc' },
+        { field: 'salePrice', message: 'Giá bán là bắt buộc' },
       ]);
     }
 
@@ -165,7 +165,7 @@ async function createProduct(req, res, next) {
       },
     });
 
-    return sendSuccess(res, { item }, 'Product created', 201);
+    return sendSuccess(res, { item }, 'Thêm sản phẩm thành công', 201);
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {
@@ -190,14 +190,14 @@ async function updateProduct(req, res, next) {
     const currentStock = parseNumber(req.body?.currentStock, 0);
 
     if (!sku || !name || !unit || !categoryId || !supplierId || costPrice === null || salePrice === null) {
-      return sendError(res, 'Required fields are missing', 400, [
-        { field: 'sku', message: 'SKU is required' },
-        { field: 'name', message: 'Name is required' },
-        { field: 'unit', message: 'Unit is required' },
-        { field: 'categoryId', message: 'Category is required' },
-        { field: 'supplierId', message: 'Supplier is required' },
-        { field: 'costPrice', message: 'Cost price is required' },
-        { field: 'salePrice', message: 'Sale price is required' },
+      return sendError(res, 'Vui lòng điền đầy đủ các thông tin bắt buộc', 400, [
+        { field: 'sku', message: 'SKU là bắt buộc' },
+        { field: 'name', message: 'Tên sản phẩm là bắt buộc' },
+        { field: 'unit', message: 'Đơn vị tính là bắt buộc' },
+        { field: 'categoryId', message: 'Danh mục là bắt buộc' },
+        { field: 'supplierId', message: 'Nhà cung cấp là bắt buộc' },
+        { field: 'costPrice', message: 'Giá vốn là bắt buộc' },
+        { field: 'salePrice', message: 'Giá bán là bắt buộc' },
       ]);
     }
 
@@ -226,7 +226,7 @@ async function updateProduct(req, res, next) {
       },
     });
 
-    return sendSuccess(res, { item }, 'Product updated');
+    return sendSuccess(res, { item }, 'Cập nhật sản phẩm thành công');
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {
@@ -243,7 +243,7 @@ async function deleteProduct(req, res, next) {
       where: { id },
     });
 
-    return sendSuccess(res, null, 'Product deleted');
+    return sendSuccess(res, null, 'Xóa sản phẩm thành công');
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {

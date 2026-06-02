@@ -1,101 +1,42 @@
-# StockInsight Backend
+# StockInsight
 
-Backend cho hệ thống quản lý hàng hóa và phân tích bán hàng StockInsight.
+Hệ thống quản lý kho hàng - Đồ án thực tập (Giai đoạn 1 - 5)
 
-## Tech Stack
+## Các giai đoạn đã hoàn thành
+
+- **Phase 1 & 2**: Khởi tạo dự án, thiết lập CSDL (Prisma + PostgreSQL), JWT Authentication, CRUD cơ bản.
+- **Phase 3**: Quản lý Nhập kho (Import) & Xuất kho (Export) với phương pháp FEFO (First Expired First Out).
+- **Phase 4**: Cải thiện giao diện với bố cục Dashboard chuẩn (Sidebar, Tabs), chia nhỏ component, tăng trải nghiệm người dùng (UX/UI).
+- **Phase 5**: Bản địa hóa (Localization) toàn bộ ứng dụng sang Tiếng Việt.
+  - Chuyển đổi dữ liệu mẫu (Seed Data) sang Tiếng Việt.
+  - Dịch toàn bộ thông báo lỗi và thành công từ API Backend sang Tiếng Việt.
+  - Dịch toàn bộ giao diện Frontend (Pages, Components) sang Tiếng Việt.
+
+## Cài đặt và Chạy ứng dụng
+
+### Yêu cầu
 - Node.js
-- Express
-- Prisma
 - PostgreSQL
-- JWT
-- bcryptjs
+- WSL (Dành cho Windows)
 
-## Cấu trúc chính
-```text
-prisma/          schema, migration, seed
-src/config/      env, prisma client
-src/controllers/ business logic
-src/middleware/  auth, error handler
-src/routes/      API routes
-src/utils/       helper functions
-```
-
-## Cài đặt môi trường
-Tạo file `.env` trong thư mục backend:
-```ini
-PORT=3001
-NODE_ENV=development
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/stockinsight?schema=public"
-JWT_SECRET="change-me-in-production"
-CORS_ORIGIN="http://localhost:5173"
-```
-
-## Chạy project
+### 1. Cài đặt Backend
 ```bash
+cd stockinsight-backend
 npm install
-npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:seed
+# Cấu hình .env với DATABASE_URL
+npx prisma migrate dev
+npx prisma db seed # Nạp dữ liệu mẫu
 npm run dev
 ```
 
-## Phase 2 Auth APIs
-- `POST /api/auth/login`
-- `GET /api/auth/me`
+### 2. Cài đặt Frontend
+```bash
+cd stockinsight-frontend
+npm install
+npm run dev
+```
 
-## Route kiểm tra phân quyền
-- `GET /api/protected/auth`
-- `GET /api/protected/admin`
-- `GET /api/protected/warehouse`
-- `GET /api/protected/employee`
-
-## Phase 3 Master Data APIs
-- `GET /api/categories`
-- `POST /api/categories`
-- `GET /api/categories/:id`
-- `PUT /api/categories/:id`
-- `DELETE /api/categories/:id`
-- `GET /api/suppliers`
-- `POST /api/suppliers`
-- `GET /api/suppliers/:id`
-- `PUT /api/suppliers/:id`
-- `DELETE /api/suppliers/:id`
-- `GET /api/products`
-- `POST /api/products`
-- `GET /api/products/:id`
-- `PUT /api/products/:id`
-- `DELETE /api/products/:id`
-
-## Phase 4 Import Data APIs
-- `GET /api/imports`
-- `POST /api/imports`
-- `GET /api/imports/:id`
-- `POST /api/imports/:id/approve`
-- `POST /api/imports/:id/reject`
-
-## Phase 5 Export Data APIs (FEFO)
-- `GET /api/exports`
-- `POST /api/exports` (Tự động chia lô FEFO)
-- `GET /api/exports/:id`
-- `POST /api/exports/:id/approve`
-- `POST /api/exports/:id/reject`
-
-Query support:
-- Categories and suppliers support `search`, `page`, `limit`
-- Products support `search`, `categoryId`, `supplierId`, `page`, `limit`
-
-## Tài khoản seed
-- `admin@stockinsight.local` / `admin123`
-- `manager@stockinsight.local` / `admin123`
-- `employee@stockinsight.local` / `admin123`
-
-## Health check
-- `GET /api/health`
-
-## Ghi chú
-- Backend dùng chuẩn response:
-  - `success`
-  - `message`
-  - `data`
-- Token JWT được gửi qua header:
-  - `Authorization: Bearer <token>`
+### 3. Tài khoản Demo
+- **Admin**: `admin@stockinsight.local` / `admin123`
+- **Manager**: `manager@stockinsight.local` / `admin123`
+- **Employee**: `employee@stockinsight.local` / `admin123`

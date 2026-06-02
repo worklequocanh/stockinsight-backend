@@ -20,9 +20,9 @@ async function login(req, res, next) {
     const normalizedEmail = String(email || '').trim().toLowerCase();
 
     if (!normalizedEmail || !password) {
-      return sendError(res, 'Email and password are required', 400, [
-        { field: 'email', message: 'Email is required' },
-        { field: 'password', message: 'Password is required' },
+      return sendError(res, 'Email và mật khẩu không được bỏ trống', 400, [
+        { field: 'email', message: 'Vui lòng nhập Email' },
+        { field: 'password', message: 'Vui lòng nhập Mật khẩu' },
       ]);
     }
 
@@ -31,12 +31,12 @@ async function login(req, res, next) {
     });
 
     if (!user) {
-      return sendError(res, 'Invalid email or password', 401);
+      return sendError(res, 'Email hoặc mật khẩu không chính xác', 401);
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
-      return sendError(res, 'Invalid email or password', 401);
+      return sendError(res, 'Email hoặc mật khẩu không chính xác', 401);
     }
 
     const accessToken = signAccessToken({
@@ -48,7 +48,7 @@ async function login(req, res, next) {
     return sendSuccess(res, {
       accessToken,
       user: sanitizeUser(user),
-    }, 'Login successful');
+    }, 'Đăng nhập thành công');
   } catch (error) {
     return next(error);
   }
@@ -57,12 +57,12 @@ async function login(req, res, next) {
 async function me(req, res, next) {
   try {
     if (!req.user) {
-      return sendError(res, 'Unauthorized', 401);
+      return sendError(res, 'Không có quyền truy cập', 401);
     }
 
     return sendSuccess(res, {
       user: req.user,
-    }, 'Current user loaded');
+    }, 'Đã tải thông tin người dùng');
   } catch (error) {
     return next(error);
   }

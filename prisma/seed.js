@@ -21,7 +21,7 @@ async function main() {
       where: { email: 'admin@stockinsight.local' },
       update: {},
       create: {
-        name: 'Admin',
+        name: 'Quản trị viên',
         email: 'admin@stockinsight.local',
         password,
         role: Role.ADMIN,
@@ -31,7 +31,7 @@ async function main() {
       where: { email: 'manager@stockinsight.local' },
       update: {},
       create: {
-        name: 'Warehouse Manager',
+        name: 'Quản lý kho',
         email: 'manager@stockinsight.local',
         password,
         role: Role.WAREHOUSE_MANAGER,
@@ -41,7 +41,7 @@ async function main() {
       where: { email: 'employee@stockinsight.local' },
       update: {},
       create: {
-        name: 'Employee',
+        name: 'Nhân viên',
         email: 'employee@stockinsight.local',
         password,
         role: Role.EMPLOYEE,
@@ -64,14 +64,14 @@ async function main() {
 
   const suppliers = await Promise.all([
     prisma.supplier.upsert({
-      where: { name: 'Supplier A' },
+      where: { name: 'Công ty TNHH Nước Giải Khát' },
       update: {},
-      create: { name: 'Supplier A', phone: '0900000001', email: 'suppliera@example.com' },
+      create: { name: 'Công ty TNHH Nước Giải Khát', phone: '0900000001', email: 'contact@beverage.vn' },
     }),
     prisma.supplier.upsert({
-      where: { name: 'Supplier B' },
+      where: { name: 'Công ty CP Thực Phẩm Khô' },
       update: {},
-      create: { name: 'Supplier B', phone: '0900000002', email: 'supplierb@example.com' },
+      create: { name: 'Công ty CP Thực Phẩm Khô', phone: '0900000002', email: 'contact@dryfood.vn' },
     }),
   ]);
 

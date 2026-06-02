@@ -58,7 +58,7 @@ async function getSupplierById(req, res, next) {
     });
 
     if (!item) {
-      return sendError(res, 'Supplier not found', 404);
+      return sendError(res, 'Không tìm thấy nhà cung cấp', 404);
     }
 
     return sendSuccess(res, { item });
@@ -75,8 +75,8 @@ async function createSupplier(req, res, next) {
     const address = String(req.body?.address || '').trim();
 
     if (!name) {
-      return sendError(res, 'Name is required', 400, [
-        { field: 'name', message: 'Name is required' },
+      return sendError(res, 'Vui lòng nhập tên nhà cung cấp', 400, [
+        { field: 'name', message: 'Tên nhà cung cấp là bắt buộc' },
       ]);
     }
 
@@ -89,7 +89,7 @@ async function createSupplier(req, res, next) {
       },
     });
 
-    return sendSuccess(res, { item }, 'Supplier created', 201);
+    return sendSuccess(res, { item }, 'Thêm nhà cung cấp thành công', 201);
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {
@@ -108,8 +108,8 @@ async function updateSupplier(req, res, next) {
     const address = String(req.body?.address || '').trim();
 
     if (!name) {
-      return sendError(res, 'Name is required', 400, [
-        { field: 'name', message: 'Name is required' },
+      return sendError(res, 'Vui lòng nhập tên nhà cung cấp', 400, [
+        { field: 'name', message: 'Tên nhà cung cấp là bắt buộc' },
       ]);
     }
 
@@ -123,7 +123,7 @@ async function updateSupplier(req, res, next) {
       },
     });
 
-    return sendSuccess(res, { item }, 'Supplier updated');
+    return sendSuccess(res, { item }, 'Cập nhật nhà cung cấp thành công');
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {
@@ -140,7 +140,7 @@ async function deleteSupplier(req, res, next) {
       where: { id },
     });
 
-    return sendSuccess(res, null, 'Supplier deleted');
+    return sendSuccess(res, null, 'Xóa nhà cung cấp thành công');
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {

@@ -16,14 +16,14 @@ async function authenticate(req, res, next) {
     const token = getBearerToken(req);
 
     if (!token) {
-      return sendError(res, 'Unauthorized', 401);
+      return sendError(res, 'Không có quyền truy cập', 401);
     }
 
     let payload;
     try {
       payload = verifyAccessToken(token);
     } catch {
-      return sendError(res, 'Invalid or expired token', 401);
+      return sendError(res, 'Token không hợp lệ hoặc đã hết hạn', 401);
     }
 
     const user = await prisma.user.findUnique({
@@ -39,7 +39,7 @@ async function authenticate(req, res, next) {
     });
 
     if (!user) {
-      return sendError(res, 'Unauthorized', 401);
+      return sendError(res, 'Không có quyền truy cập', 401);
     }
 
     req.user = user;
@@ -52,11 +52,11 @@ async function authenticate(req, res, next) {
 function requireRoles(...allowedRoles) {
   return (req, res, next) => {
     if (!req.user) {
-      return sendError(res, 'Unauthorized', 401);
+      return sendError(res, 'Không có quyền truy cập', 401);
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      return sendError(res, 'Forbidden', 403);
+      return sendError(res, 'Từ chối truy cập', 403);
     }
 
     return next();

@@ -56,7 +56,7 @@ async function getCategoryById(req, res, next) {
     });
 
     if (!item) {
-      return sendError(res, 'Category not found', 404);
+      return sendError(res, 'Không tìm thấy danh mục', 404);
     }
 
     return sendSuccess(res, { item });
@@ -71,8 +71,8 @@ async function createCategory(req, res, next) {
     const description = String(req.body?.description || '').trim();
 
     if (!name) {
-      return sendError(res, 'Name is required', 400, [
-        { field: 'name', message: 'Name is required' },
+      return sendError(res, 'Vui lòng nhập tên danh mục', 400, [
+        { field: 'name', message: 'Tên danh mục là bắt buộc' },
       ]);
     }
 
@@ -83,7 +83,7 @@ async function createCategory(req, res, next) {
       },
     });
 
-    return sendSuccess(res, { item }, 'Category created', 201);
+    return sendSuccess(res, { item }, 'Tạo danh mục thành công', 201);
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {
@@ -113,7 +113,7 @@ async function updateCategory(req, res, next) {
       },
     });
 
-    return sendSuccess(res, { item }, 'Category updated');
+    return sendSuccess(res, { item }, 'Cập nhật danh mục thành công');
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {
@@ -130,7 +130,7 @@ async function deleteCategory(req, res, next) {
       where: { id },
     });
 
-    return sendSuccess(res, null, 'Category deleted');
+    return sendSuccess(res, null, 'Xóa danh mục thành công');
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {

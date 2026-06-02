@@ -74,7 +74,7 @@ async function getImportById(req, res, next) {
     });
 
     if (!item) {
-      return sendError(res, 'Import receipt not found', 404);
+      return sendError(res, 'Không tìm thấy phiếu nhập', 404);
     }
 
     return sendSuccess(res, { item });
@@ -91,21 +91,21 @@ async function createImport(req, res, next) {
     const userId = req.user.id;
 
     if (!supplierId || !items.length) {
-      return sendError(res, 'Supplier and at least one item are required', 400);
+      return sendError(res, 'Vui lòng chọn nhà cung cấp và ít nhất một sản phẩm', 400);
     }
 
     for (const item of items) {
       if (!item.productId || !item.quantity || !item.unitPrice || !item.lotNumber || !item.expiryDate) {
-        return sendError(res, 'Invalid item format. Required: productId, quantity, unitPrice, lotNumber, expiryDate', 400);
+        return sendError(res, 'Thông tin sản phẩm không hợp lệ (yêu cầu: sản phẩm, số lượng, giá nhập, số lô, hạn sử dụng)', 400);
       }
       if (item.quantity <= 0 || item.unitPrice < 0) {
-        return sendError(res, 'Quantity and unit price must be positive', 400);
+        return sendError(res, 'Số lượng và giá nhập phải lớn hơn 0', 400);
       }
     }
 
     const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
     if (!supplier) {
-      return sendError(res, 'Supplier not found', 400);
+      return sendError(res, 'Không tìm thấy nhà cung cấp', 400);
     }
 
     const receipt = await prisma.importReceipt.create({
@@ -128,7 +128,7 @@ async function createImport(req, res, next) {
       include: { items: true }
     });
 
-    return sendSuccess(res, { item: receipt }, 'Import receipt created', 201);
+    return sendSuccess(res, { item: receipt }, 'Tạo phiếu nhập thành công', 201);
   } catch (error) {
     const mapped = mapPrismaError(error);
     if (mapped) {
@@ -149,11 +149,11 @@ async function approveImport(req, res, next) {
     });
 
     if (!receipt) {
-      return sendError(res, 'Import receipt not found', 404);
+      return sendError(res, 'Không tìm thấy phiếu nhập', 404);
     }
 
     if (receipt.status !== ReceiptStatus.PENDING) {
-      return sendError(res, 'Receipt is not in PENDING status', 400);
+      return sendError(res, 'Chỉ có thể duyệt phiếu đang ở trạng thái Chờ Duyệt', 400);
     }
 
     // Transaction to ensure atomicity
@@ -197,7 +197,7 @@ async function approveImport(req, res, next) {
       }
     });
 
-    return sendSuccess(res, null, 'Import receipt approved successfully');
+    return sendSuccess(res, null, 'Duyệt phiếu nhập thành công');
   } catch (error) {
     return next(error);
   }
@@ -210,7 +210,7 @@ async function rejectImport(req, res, next) {
     const userId = req.user.id;
 
     if (!reason) {
-      return sendError(res, 'Reason is required to reject', 400);
+      return sendError(res, 'Vui lòng nhập lý do từ chối', 400);
     }
 
     const receipt = await prisma.importReceipt.findUnique({
@@ -218,11 +218,11 @@ async function rejectImport(req, res, next) {
     });
 
     if (!receipt) {
-      return sendError(res, 'Import receipt not found', 404);
+      return sendError(res, 'Không tìm thấy phiếu nhập', 404);
     }
 
     if (receipt.status !== ReceiptStatus.PENDING) {
-      return sendError(res, 'Receipt is not in PENDING status', 400);
+      return sendError(res, 'Chỉ có thể từ chối phiếu đang ở trạng thái Chờ Duyệt', 400);
     }
 
     await prisma.importReceipt.update({
@@ -235,7 +235,7 @@ async function rejectImport(req, res, next) {
       }
     });
 
-    return sendSuccess(res, null, 'Import receipt rejected');
+    return sendSuccess(res, null, 'Đã từ chối phiếu nhập');
   } catch (error) {
     return next(error);
   }

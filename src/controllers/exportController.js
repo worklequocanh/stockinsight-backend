@@ -65,7 +65,7 @@ exports.getExportById = async (req, res, next) => {
     });
 
     if (!receipt) {
-      return res.status(404).json({ success: false, message: 'Export receipt not found' });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu xuất' });
     }
 
     res.json({ success: true, data: receipt });
@@ -79,7 +79,7 @@ exports.createExport = async (req, res, next) => {
     const { exportType, note, items } = req.body;
     
     if (!items || items.length === 0) {
-      return res.status(400).json({ success: false, message: 'Items are required' });
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất một sản phẩm' });
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -112,7 +112,7 @@ exports.createExport = async (req, res, next) => {
         // Check total available stock
         const totalAvailable = batches.reduce((sum, b) => sum + b.remainingQuantity, 0);
         if (totalAvailable < remainingToFulfill) {
-          throw new Error(`Product ${item.productId} does not have enough stock. Requested: ${remainingToFulfill}, Available: ${totalAvailable}`);
+          throw new Error(`Sản phẩm không đủ tồn kho. Yêu cầu: ${remainingToFulfill}, Có sẵn: ${totalAvailable}`);
         }
 
         for (const batch of batches) {
@@ -140,7 +140,7 @@ exports.createExport = async (req, res, next) => {
 
     res.status(201).json({ success: true, data: result });
   } catch (error) {
-    if (error.message.includes('does not have enough stock')) {
+    if (error.message.includes('không đủ tồn kho')) {
       return res.status(400).json({ success: false, message: error.message });
     }
     next(error);
@@ -157,15 +157,15 @@ exports.approveExport = async (req, res, next) => {
         include: { items: true },
       });
 
-      if (!receipt) throw new Error('Receipt not found');
-      if (receipt.status !== 'PENDING') throw new Error('Receipt is not pending');
+      if (!receipt) throw new Error('Không tìm thấy phiếu xuất');
+      if (receipt.status !== 'PENDING') throw new Error('Phiếu xuất không ở trạng thái Chờ Duyệt');
 
       // Deduct stock for each item
       for (const item of receipt.items) {
         // Validate batch remaining quantity
         const batch = await tx.stockBatch.findUnique({ where: { id: item.stockBatchId } });
         if (batch.remainingQuantity < item.quantity) {
-          throw new Error(`Insufficient stock in batch ${batch.lotNumber}. Please reject this receipt and recreate it.`);
+          throw new Error(`Tồn kho lô ${batch.lotNumber} không đủ. Vui lòng từ chối phiếu xuất này và tạo lại.`);
         }
 
         // Deduct from batch
@@ -194,9 +194,9 @@ exports.approveExport = async (req, res, next) => {
 
     res.json({ success: true, data: result });
   } catch (error) {
-    if (error.message === 'Receipt not found') return res.status(404).json({ success: false, message: error.message });
-    if (error.message === 'Receipt is not pending') return res.status(400).json({ success: false, message: error.message });
-    if (error.message.includes('Insufficient stock')) return res.status(400).json({ success: false, message: error.message });
+    if (error.message === 'Không tìm thấy phiếu xuất') return res.status(404).json({ success: false, message: error.message });
+    if (error.message === 'Phiếu xuất không ở trạng thái Chờ Duyệt') return res.status(400).json({ success: false, message: error.message });
+    if (error.message.includes('Tồn kho lô')) return res.status(400).json({ success: false, message: error.message });
     next(error);
   }
 };
@@ -207,12 +207,12 @@ exports.rejectExport = async (req, res, next) => {
     const { reason } = req.body;
 
     if (!reason) {
-      return res.status(400).json({ success: false, message: 'Rejection reason is required' });
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập lý do từ chối' });
     }
 
     const receipt = await prisma.exportReceipt.findUnique({ where: { id } });
-    if (!receipt) return res.status(404).json({ success: false, message: 'Receipt not found' });
-    if (receipt.status !== 'PENDING') return res.status(400).json({ success: false, message: 'Receipt is not pending' });
+    if (!receipt) return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu xuất' });
+    if (receipt.status !== 'PENDING') return res.status(400).json({ success: false, message: 'Phiếu xuất không ở trạng thái Chờ Duyệt' });
 
     const updated = await prisma.exportReceipt.update({
       where: { id },
