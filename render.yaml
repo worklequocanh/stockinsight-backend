@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: stockinsight-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stockinsight-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*" # Set this to the Vercel URL later
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: stockinsight-db
+    databaseName: stockinsight
+    user: stockinsight_user
+    plan: free
