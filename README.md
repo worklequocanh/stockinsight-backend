@@ -11,6 +11,10 @@ Hệ thống quản lý kho hàng - Đồ án thực tập (Giai đoạn 1 - 5)
   - Chuyển đổi dữ liệu mẫu (Seed Data) sang Tiếng Việt.
   - Dịch toàn bộ thông báo lỗi và thành công từ API Backend sang Tiếng Việt.
   - Dịch toàn bộ giao diện Frontend (Pages, Components) sang Tiếng Việt.
+- **Phase 6**: Tồn kho, cảnh báo và Dashboard.
+  - Thêm trang Báo cáo tồn kho tổng hợp (tính tốc độ tiêu thụ, cảnh báo tồn thấp, gợi ý nhập hàng).
+  - Cảnh báo các lô hàng sắp hết hạn trong vòng 30 ngày.
+  - Xây dựng Dashboard thống kê (KPIs, Biểu đồ Nhập/Xuất 6 tháng, Top sản phẩm bán chạy).
 
 ## Cài đặt và Chạy ứng dụng
 
