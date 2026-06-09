@@ -68,3 +68,15 @@ npm run dev
 - **Admin**: `admin@stockinsight.local` / `admin123`
 - **Manager**: `manager@stockinsight.local` / `admin123`
 - **Employee**: `employee@stockinsight.local` / `admin123`
+
+---
+
+## Tài liệu API (Swagger UI)
+
+Hệ thống cung cấp sẵn giao diện kiểm thử API thông qua Swagger UI.
+1. Khởi động server backend (`npm run dev`).
+2. Mở trình duyệt truy cập: `http://localhost:3001/api-docs`.
+3. Để kiểm thử các API yêu cầu xác thực:
+   - Sử dụng API `POST /api/auth/login` và điền tài khoản demo để nhận `token`.
+   - Bấm nút **Authorize** ở góc phải màn hình, điền `token` vào và lưu lại.
+   - Các API khác sẽ tự động sử dụng token này cho các phiên truy cập.
