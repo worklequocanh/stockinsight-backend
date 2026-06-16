@@ -1,7 +1,7 @@
 const request = require('supertest');
-const app = require('../src/app');
-const prisma = require('../src/config/prisma');
-const { setupMasterData } = require('./helpers');
+const app = require('../../src/app');
+const prisma = require('../../src/config/prisma');
+const { setupMasterData } = require('../utils/helpers');
 
 describe('Returns API', () => {
   let masterData;

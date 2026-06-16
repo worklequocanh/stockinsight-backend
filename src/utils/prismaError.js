@@ -11,7 +11,7 @@ function mapPrismaError(error) {
     };
   }
 
-  if (error.code === 'P2003') {
+  if (error.code === 'P2003' || error.message?.includes('violates RESTRICT setting') || error.cause?.code === '23001' || error.cause?.code === '23503') {
     return {
       statusCode: 409,
       message: 'Cannot delete or update record because it is linked to other data',

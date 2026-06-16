@@ -1,4 +1,4 @@
-const prisma = require('../src/config/prisma');
+const prisma = require('../../src/config/prisma');
 
 beforeAll(async () => {
   await prisma.$connect();

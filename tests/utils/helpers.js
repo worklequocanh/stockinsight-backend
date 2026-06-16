@@ -1,6 +1,6 @@
-const prisma = require('../src/config/prisma');
+const prisma = require('../../src/config/prisma');
 const bcrypt = require('bcryptjs');
-const { signAccessToken } = require('../src/utils/jwt');
+const { signAccessToken } = require('../../src/utils/jwt');
 
 async function setupMasterData() {
   const hashedPassword = await bcrypt.hash('password123', 10);
