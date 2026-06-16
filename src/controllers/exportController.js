@@ -26,6 +26,7 @@ exports.listExports = async (req, res, next) => {
         include: {
           createdBy: { select: { id: true, name: true } },
           approvedBy: { select: { id: true, name: true } },
+          customer: { select: { id: true, name: true } },
         },
       }),
     ]);
@@ -55,6 +56,7 @@ exports.getExportById = async (req, res, next) => {
       include: {
         createdBy: { select: { id: true, name: true } },
         approvedBy: { select: { id: true, name: true } },
+        customer: true,
         items: {
           include: {
             product: true,
@@ -76,10 +78,14 @@ exports.getExportById = async (req, res, next) => {
 
 exports.createExport = async (req, res, next) => {
   try {
-    const { exportType, note, items } = req.body;
+    const { exportType, note, items, customerId } = req.body;
     
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất một sản phẩm' });
+    }
+
+    if (exportType === 'SALE' && !customerId) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn khách hàng khi xuất bán' });
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -88,6 +94,7 @@ exports.createExport = async (req, res, next) => {
         data: {
           code: `EXP-${Date.now()}`,
           exportType,
+          customerId: exportType === 'SALE' ? customerId : null,
           note,
           createdById: req.user.id,
           status: 'PENDING',

@@ -25,18 +25,34 @@ enum ExportType {
   TRANSFER
 }
 
+enum CheckStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum ReturnStatus {
+  PENDING
+  INSPECTED
+  RETURNED_TO_STOCK
+  DISCARDED
+}
+
 model User {
-  id                    String          @id @default(uuid())
-  name                  String
-  email                 String          @unique
-  password              String
-  role                  Role            @default(EMPLOYEE)
-  createdImportReceipts  ImportReceipt[] @relation("ImportCreatedBy")
-  approvedImportReceipts ImportReceipt[] @relation("ImportApprovedBy")
-  createdExportReceipts  ExportReceipt[] @relation("ExportCreatedBy")
-  approvedExportReceipts ExportReceipt[] @relation("ExportApprovedBy")
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  id                     String           @id @default(uuid())
+  name                   String
+  email                  String           @unique
+  password               String
+  role                   Role             @default(EMPLOYEE)
+  createdImportReceipts  ImportReceipt[]  @relation("ImportCreatedBy")
+  approvedImportReceipts ImportReceipt[]  @relation("ImportApprovedBy")
+  createdExportReceipts  ExportReceipt[]  @relation("ExportCreatedBy")
+  approvedExportReceipts ExportReceipt[]  @relation("ExportApprovedBy")
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  inventoryChecks        InventoryCheck[]
+  returnReceipts         ReturnReceipt[]
 }
 
 model Category {
@@ -49,73 +65,78 @@ model Category {
 }
 
 model Supplier {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  phone     String?
-  email     String?
-  address   String?
-  products  Product[]
+  id             String          @id @default(uuid())
+  name           String          @unique
+  phone          String?
+  email          String?
+  address        String?
+  products       Product[]
   importReceipts ImportReceipt[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model Product {
-  id           String       @id @default(uuid())
-  sku          String       @unique
-  barcode      String?      @unique
-  name         String
-  unit         String
-  minStock     Int          @default(0)
-  costPrice    Decimal      @db.Decimal(12, 2)
-  salePrice    Decimal      @db.Decimal(12, 2)
-  currentStock  Int          @default(0)
-  categoryId   String
-  supplierId   String
-  category     Category     @relation(fields: [categoryId], references: [id])
-  supplier     Supplier     @relation(fields: [supplierId], references: [id])
-  stockBatches StockBatch[]
-  importItems  ImportItem[]
-  exportItems  ExportItem[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                  String               @id @default(uuid())
+  sku                 String               @unique
+  barcode             String?              @unique
+  name                String
+  unit                String
+  minStock            Int                  @default(0)
+  costPrice           Decimal              @db.Decimal(12, 2)
+  salePrice           Decimal              @db.Decimal(12, 2)
+  currentStock        Int                  @default(0)
+  categoryId          String
+  supplierId          String
+  category            Category             @relation(fields: [categoryId], references: [id])
+  supplier            Supplier             @relation(fields: [supplierId], references: [id])
+  stockBatches        StockBatch[]
+  importItems         ImportItem[]
+  exportItems         ExportItem[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  inventoryCheckItems InventoryCheckItem[]
+  returnItems         ReturnItem[]
 
   @@index([categoryId])
   @@index([supplierId])
 }
 
 model StockBatch {
-  id                String       @id @default(uuid())
-  productId         String
-  lotNumber         String
-  expiryDate        DateTime
-  quantity          Int
-  remainingQuantity Int
-  product           Product      @relation(fields: [productId], references: [id])
-  importItem        ImportItem?
-  exportItems       ExportItem[]
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                  String               @id @default(uuid())
+  productId           String
+  lotNumber           String
+  expiryDate          DateTime
+  quantity            Int
+  remainingQuantity   Int
+  product             Product              @relation(fields: [productId], references: [id])
+  importItem          ImportItem?
+  exportItems         ExportItem[]
+  locationId          String?
+  location            Location?            @relation(fields: [locationId], references: [id])
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  inventoryCheckItems InventoryCheckItem[]
 
   @@index([productId, expiryDate])
 }
 
 model ImportReceipt {
-  id             String          @id @default(uuid())
-  code           String          @unique
+  id             String        @id @default(uuid())
+  code           String        @unique
   supplierId     String
-  status         ReceiptStatus   @default(PENDING)
+  status         ReceiptStatus @default(PENDING)
   note           String?
   createdById    String
   approvedById   String?
   rejectedReason String?
   approvedAt     DateTime?
-  supplier       Supplier        @relation(fields: [supplierId], references: [id])
-  createdBy      User            @relation("ImportCreatedBy", fields: [createdById], references: [id])
-  approvedBy     User?           @relation("ImportApprovedBy", fields: [approvedById], references: [id])
+  supplier       Supplier      @relation(fields: [supplierId], references: [id])
+  createdBy      User          @relation("ImportCreatedBy", fields: [createdById], references: [id])
+  approvedBy     User?         @relation("ImportApprovedBy", fields: [approvedById], references: [id])
   items          ImportItem[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([supplierId, status])
 }
@@ -140,38 +161,121 @@ model ImportItem {
 }
 
 model ExportReceipt {
-  id             String          @id @default(uuid())
-  code           String          @unique
+  id             String        @id @default(uuid())
+  code           String        @unique
   exportType     ExportType
-  status         ReceiptStatus   @default(PENDING)
+  status         ReceiptStatus @default(PENDING)
   note           String?
   createdById    String
   approvedById   String?
   rejectedReason String?
   approvedAt     DateTime?
-  createdBy      User            @relation("ExportCreatedBy", fields: [createdById], references: [id])
-  approvedBy     User?           @relation("ExportApprovedBy", fields: [approvedById], references: [id])
+  createdBy      User          @relation("ExportCreatedBy", fields: [createdById], references: [id])
+  approvedBy     User?         @relation("ExportApprovedBy", fields: [approvedById], references: [id])
   items          ExportItem[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  customerId     String?
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([exportType, status])
 }
 
 model ExportItem {
-  id             String        @id @default(uuid())
+  id              String        @id @default(uuid())
   exportReceiptId String
-  productId      String
-  stockBatchId   String
-  quantity       Int
-  unitPrice      Decimal       @db.Decimal(12, 2)
-  exportReceipt  ExportReceipt @relation(fields: [exportReceiptId], references: [id])
-  product        Product       @relation(fields: [productId], references: [id])
-  stockBatch     StockBatch    @relation(fields: [stockBatchId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  productId       String
+  stockBatchId    String
+  quantity        Int
+  unitPrice       Decimal       @db.Decimal(12, 2)
+  exportReceipt   ExportReceipt @relation(fields: [exportReceiptId], references: [id])
+  product         Product       @relation(fields: [productId], references: [id])
+  stockBatch      StockBatch    @relation(fields: [stockBatchId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([exportReceiptId])
   @@index([productId])
   @@index([stockBatchId])
+}
+
+model Customer {
+  id             String          @id @default(uuid())
+  name           String
+  phone          String?
+  email          String?         @unique
+  address        String?
+  exportReceipts ExportReceipt[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Location {
+  id          String       @id @default(uuid())
+  code        String       @unique
+  name        String
+  description String?
+  batches     StockBatch[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model InventoryCheck {
+  id          String               @id @default(uuid())
+  code        String               @unique
+  status      CheckStatus          @default(DRAFT)
+  note        String?
+  createdById String
+  createdBy   User                 @relation(fields: [createdById], references: [id])
+  items       InventoryCheckItem[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model InventoryCheckItem {
+  id               String         @id @default(uuid())
+  inventoryCheckId String
+  productId        String
+  stockBatchId     String?
+  systemQty        Int
+  actualQty        Int?
+  difference       Int?
+  inventoryCheck   InventoryCheck @relation(fields: [inventoryCheckId], references: [id])
+  product          Product        @relation(fields: [productId], references: [id])
+  batch            StockBatch?    @relation(fields: [stockBatchId], references: [id])
+}
+
+model ReturnReceipt {
+  id               String       @id @default(uuid())
+  code             String       @unique
+  originalExportId String?
+  status           ReturnStatus @default(PENDING)
+  reason           String
+  createdById      String
+  createdBy        User         @relation(fields: [createdById], references: [id])
+  items            ReturnItem[]
+  createdAt        DateTime     @default(now())
+}
+
+model ReturnItem {
+  id              String        @id @default(uuid())
+  returnReceiptId String
+  productId       String
+  quantity        Int
+  qualityStatus   String
+  returnReceipt   ReturnReceipt @relation(fields: [returnReceiptId], references: [id])
+  product         Product       @relation(fields: [productId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([resource, resourceId])
+  @@index([createdAt])
 }
