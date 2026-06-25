@@ -122,4 +122,65 @@ describe('Import API', () => {
     expect(approveRes2.status).toBe(400);
     expect(approveRes2.body.message).toBe('Chỉ có thể duyệt phiếu đang ở trạng thái Chờ Duyệt');
   });
+
+  it('nên tạo phiếu nhập với locationId và gán vào StockBatch khi duyệt', async () => {
+    const product1 = masterData.products[0];
+
+    // Tạo phiếu nhập có locationId
+    const createRes = await request(app)
+      .post('/api/imports')
+      .set('Authorization', `Bearer ${masterData.tokens.managerToken}`)
+      .send({
+        supplierId: masterData.supplier.id,
+        items: [
+          {
+            productId: product1.id,
+            quantity: 30,
+            unitPrice: 40000,
+            lotNumber: 'LOT-LOC-01',
+            expiryDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+            locationId: masterData.location.id,
+          },
+        ],
+      });
+
+    expect(createRes.status).toBe(201);
+    const receiptId = createRes.body.data.item.id;
+
+    // Duyệt phiếu nhập
+    await request(app)
+      .post(`/api/imports/${receiptId}/approve`)
+      .set('Authorization', `Bearer ${masterData.tokens.managerToken}`);
+
+    // Kiểm tra StockBatch có locationId
+    const batches = await prisma.stockBatch.findMany({
+      where: { productId: product1.id, lotNumber: 'LOT-LOC-01' },
+    });
+    expect(batches.length).toBe(1);
+    expect(batches[0].locationId).toBe(masterData.location.id);
+  });
+
+  it('nên từ chối locationId không tồn tại', async () => {
+    const product1 = masterData.products[0];
+
+    const res = await request(app)
+      .post('/api/imports')
+      .set('Authorization', `Bearer ${masterData.tokens.managerToken}`)
+      .send({
+        supplierId: masterData.supplier.id,
+        items: [
+          {
+            productId: product1.id,
+            quantity: 10,
+            unitPrice: 40000,
+            lotNumber: 'LOT-FAKE',
+            expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            locationId: 'non-existent-location-id',
+          },
+        ],
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain('Không tìm thấy vị trí lưu kho');
+  });
 });

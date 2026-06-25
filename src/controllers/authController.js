@@ -1,7 +1,8 @@
 const prisma = require('../config/prisma');
-const { comparePassword } = require('../utils/password');
+const { comparePassword, hashPassword } = require('../utils/password');
 const { signAccessToken } = require('../utils/jwt');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
+const { writeAuditLog } = require('../utils/auditLog');
 
 function sanitizeUser(user) {
   return {
@@ -9,6 +10,7 @@ function sanitizeUser(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    isActive: user.isActive,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -32,6 +34,10 @@ async function login(req, res, next) {
 
     if (!user) {
       return sendError(res, 'Email hoặc mật khẩu không chính xác', 401);
+    }
+
+    if (!user.isActive) {
+      return sendError(res, 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.', 403);
     }
 
     const isPasswordValid = await comparePassword(password, user.password);
@@ -68,7 +74,73 @@ async function me(req, res, next) {
   }
 }
 
+async function updateProfile(req, res, next) {
+  try {
+    const name = String(req.body?.name || '').trim();
+
+    if (!name) {
+      return sendError(res, 'Tên hiển thị không được bỏ trống', 400);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { name },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return sendSuccess(res, { user }, 'Cập nhật hồ sơ thành công');
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function changePassword(req, res, next) {
+  try {
+    const { oldPassword, newPassword } = req.body || {};
+
+    if (!oldPassword || !newPassword) {
+      return sendError(res, 'Vui lòng nhập mật khẩu cũ và mật khẩu mới', 400);
+    }
+
+    if (newPassword.length < 6) {
+      return sendError(res, 'Mật khẩu mới phải có ít nhất 6 ký tự', 400);
+    }
+
+    if (oldPassword === newPassword) {
+      return sendError(res, 'Mật khẩu mới không được trùng với mật khẩu cũ', 400);
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    const isOldValid = await comparePassword(oldPassword, user.password);
+    if (!isOldValid) {
+      return sendError(res, 'Mật khẩu cũ không chính xác', 400);
+    }
+
+    const hashedPassword = await hashPassword(newPassword);
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { password: hashedPassword },
+    });
+
+    await writeAuditLog(req.user.id, 'CHANGE_PASSWORD', 'User', req.user.id, { email: user.email });
+
+    return sendSuccess(res, null, 'Đổi mật khẩu thành công');
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   login,
   me,
+  updateProfile,
+  changePassword,
 };

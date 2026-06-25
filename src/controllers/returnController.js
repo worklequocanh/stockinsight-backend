@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { mapPrismaError } = require('../utils/prismaError');
 const { normalizeSearch, toPositiveInt } = require('../utils/request');
+const { writeAuditLog } = require('../utils/auditLog');
 
 function generateReturnCode() {
   const timestamp = Date.now().toString().slice(-6);
@@ -177,6 +178,12 @@ async function processReturn(req, res, next) {
         where: { id },
         data: { status: action },
       });
+    });
+
+    // Ghi audit log
+    await writeAuditLog(req.user.id, 'UPDATE_RETURN_STATUS', 'ReturnReceipt', id, {
+      action,
+      reason: receipt.reason,
     });
 
     const msg = action === 'RETURNED_TO_STOCK' ? 'Đã nhập lại kho hàng trả về' : 'Đã xuất hủy hàng trả về';

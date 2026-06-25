@@ -7,6 +7,7 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
+  updateBatchLocation,
 } = require('../controllers/productController');
 
 const router = express.Router();
@@ -119,5 +120,33 @@ router.put('/:id', updateProduct);
  *         description: Success
  */
 router.delete('/:id', deleteProduct);
+/**
+ * @swagger
+ * /api/products/batches/{batchId}/location:
+ *   patch:
+ *     tags: [Products]
+ *     summary: Update batch location
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: batchId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               locationId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.patch('/batches/:batchId/location', updateBatchLocation);
 
 module.exports = router;

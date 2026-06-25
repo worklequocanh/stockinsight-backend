@@ -253,10 +253,42 @@ async function deleteProduct(req, res, next) {
   }
 }
 
+async function updateBatchLocation(req, res, next) {
+  try {
+    const { batchId } = req.params;
+    const locationId = String(req.body?.locationId || '').trim();
+
+    if (!locationId) {
+      return sendError(res, 'Vui lòng cung cấp locationId', 400);
+    }
+
+    const batch = await prisma.stockBatch.findUnique({ where: { id: batchId } });
+    if (!batch) {
+      return sendError(res, 'Không tìm thấy lô hàng', 404);
+    }
+
+    const location = await prisma.location.findUnique({ where: { id: locationId } });
+    if (!location) {
+      return sendError(res, 'Vị trí lưu kho không tồn tại', 400);
+    }
+
+    const updated = await prisma.stockBatch.update({
+      where: { id: batchId },
+      data: { locationId },
+      include: { location: true },
+    });
+
+    return sendSuccess(res, { item: updated }, 'Cập nhật vị trí lô hàng thành công');
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   listProducts,
   getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
+  updateBatchLocation,
 };

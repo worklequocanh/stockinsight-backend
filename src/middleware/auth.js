@@ -33,6 +33,7 @@ async function authenticate(req, res, next) {
         name: true,
         email: true,
         role: true,
+        isActive: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -40,6 +41,10 @@ async function authenticate(req, res, next) {
 
     if (!user) {
       return sendError(res, 'Không có quyền truy cập', 401);
+    }
+
+    if (!user.isActive) {
+      return sendError(res, 'Tài khoản đã bị khóa', 403);
     }
 
     req.user = user;

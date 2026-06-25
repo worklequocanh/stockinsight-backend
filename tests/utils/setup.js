@@ -9,7 +9,6 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-  // Clear all data between tests to ensure a clean state
   const tableNames = [
     'AuditLog', 'ReturnItem', 'ReturnReceipt', 'InventoryCheckItem', 
     'InventoryCheck', 'Location', 'ExportItem', 'ExportReceipt', 

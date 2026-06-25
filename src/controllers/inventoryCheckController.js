@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { mapPrismaError } = require('../utils/prismaError');
 const { normalizeSearch, toPositiveInt } = require('../utils/request');
+const { writeAuditLog } = require('../utils/auditLog');
 
 function generateCheckCode() {
   const timestamp = Date.now().toString().slice(-6);
@@ -214,6 +215,11 @@ async function approveCheck(req, res, next) {
         where: { id },
         data: { status: 'COMPLETED' },
       });
+    });
+
+    // Ghi audit log
+    await writeAuditLog(req.user.id, 'COMPLETE_INVENTORY_CHECK', 'InventoryCheck', id, {
+      note: result.note,
     });
 
     return sendSuccess(res, { item: result }, 'Chốt phiếu kiểm kê thành công, đã cân bằng kho');

@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { writeAuditLog } = require('../utils/auditLog');
 
 exports.listExports = async (req, res, next) => {
   try {
@@ -26,7 +27,7 @@ exports.listExports = async (req, res, next) => {
         include: {
           createdBy: { select: { id: true, name: true } },
           approvedBy: { select: { id: true, name: true } },
-          customer: { select: { id: true, name: true } },
+          customer: { select: { id: true, name: true, phone: true, address: true } },
         },
       }),
     ]);
@@ -84,8 +85,14 @@ exports.createExport = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất một sản phẩm' });
     }
 
-    if (exportType === 'SALE' && !customerId) {
-      return res.status(400).json({ success: false, message: 'Vui lòng chọn khách hàng khi xuất bán' });
+    if (exportType === 'SALE') {
+      if (!customerId) {
+        return res.status(400).json({ success: false, message: 'Vui lòng chọn khách hàng khi xuất bán' });
+      }
+      const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+      if (!customer) {
+        return res.status(400).json({ success: false, message: 'Không tìm thấy khách hàng' });
+      }
     }
 
     const result = await prisma.$transaction(async (tx) => {
@@ -158,6 +165,7 @@ exports.approveExport = async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    let receiptForLog;
     const result = await prisma.$transaction(async (tx) => {
       const receipt = await tx.exportReceipt.findUnique({
         where: { id },
@@ -166,6 +174,8 @@ exports.approveExport = async (req, res, next) => {
 
       if (!receipt) throw new Error('Không tìm thấy phiếu xuất');
       if (receipt.status !== 'PENDING') throw new Error('Phiếu xuất không ở trạng thái Chờ Duyệt');
+
+      receiptForLog = receipt;
 
       // Deduct stock for each item
       for (const item of receipt.items) {
@@ -199,6 +209,13 @@ exports.approveExport = async (req, res, next) => {
       });
     });
 
+    // Write audit log
+    await writeAuditLog(req.user.id, 'APPROVE_EXPORT', 'ExportReceipt', id, {
+      exportType: receiptForLog.exportType,
+      customerId: receiptForLog.customerId,
+      itemCount: receiptForLog.items?.length,
+    });
+
     res.json({ success: true, data: result });
   } catch (error) {
     if (error.message === 'Không tìm thấy phiếu xuất') return res.status(404).json({ success: false, message: error.message });
@@ -228,6 +245,11 @@ exports.rejectExport = async (req, res, next) => {
         rejectedReason: reason,
         approvedById: req.user.id,
       },
+    });
+
+    // Write audit log
+    await writeAuditLog(req.user.id, 'REJECT_EXPORT', 'ExportReceipt', id, {
+      reason,
     });
 
     res.json({ success: true, data: updated });

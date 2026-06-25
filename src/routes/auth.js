@@ -1,5 +1,5 @@
 const express = require('express');
-const { login, me } = require('../controllers/authController');
+const { login, me, updateProfile, changePassword } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
@@ -17,7 +17,7 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               username:
+ *               email:
  *                 type: string
  *               password:
  *                 type: string
@@ -26,6 +26,7 @@ const router = express.Router();
  *         description: Success
  */
 router.post('/login', login);
+
 /**
  * @swagger
  * /api/auth/me:
@@ -39,5 +40,53 @@ router.post('/login', login);
  *         description: Success
  */
 router.get('/me', authenticate, me);
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   put:
+ *     tags: [Auth]
+ *     summary: Update profile
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.put('/profile', authenticate, updateProfile);
+
+/**
+ * @swagger
+ * /api/auth/change-password:
+ *   put:
+ *     tags: [Auth]
+ *     summary: Change password
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               oldPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.put('/change-password', authenticate, changePassword);
 
 module.exports = router;

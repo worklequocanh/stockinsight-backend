@@ -12,6 +12,8 @@ const customerRoutes = require('./customers');
 const locationRoutes = require('./locations');
 const inventoryCheckRoutes = require('./inventoryChecks');
 const returnRoutes = require('./returns');
+const auditLogRoutes = require('./auditLogs');
+const userRoutes = require('./users');
 
 const router = express.Router();
 
@@ -28,5 +30,7 @@ router.use('/customers', customerRoutes);
 router.use('/locations', locationRoutes);
 router.use('/inventory-checks', inventoryCheckRoutes);
 router.use('/returns', returnRoutes);
+router.use('/audit-logs', auditLogRoutes);
+router.use('/users', userRoutes);
 
 module.exports = router;

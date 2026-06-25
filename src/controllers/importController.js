@@ -3,6 +3,7 @@ const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { mapPrismaError } = require('../utils/prismaError');
 const { normalizeSearch, toPositiveInt } = require('../utils/request');
 const { ReceiptStatus } = require('@prisma/client');
+const { writeAuditLog } = require('../utils/auditLog');
 
 function generateReceiptCode() {
   const timestamp = Date.now().toString().slice(-6);
@@ -101,6 +102,12 @@ async function createImport(req, res, next) {
       if (item.quantity <= 0 || item.unitPrice < 0) {
         return sendError(res, 'Số lượng và giá nhập phải lớn hơn 0', 400);
       }
+      if (item.locationId) {
+        const loc = await prisma.location.findUnique({ where: { id: item.locationId } });
+        if (!loc) {
+          return sendError(res, `Không tìm thấy vị trí lưu kho với ID: ${item.locationId}`, 400);
+        }
+      }
     }
 
     const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
@@ -122,6 +129,7 @@ async function createImport(req, res, next) {
             unitPrice: Number(i.unitPrice),
             lotNumber: String(i.lotNumber),
             expiryDate: new Date(i.expiryDate),
+            locationId: i.locationId ? String(i.locationId) : null,
           })),
         }
       },
@@ -186,6 +194,7 @@ async function approveImport(req, res, next) {
             expiryDate: item.expiryDate,
             quantity: item.quantity,
             remainingQuantity: item.quantity,
+            locationId: item.locationId,
           }
         });
 
@@ -195,6 +204,12 @@ async function approveImport(req, res, next) {
           data: { batchId: batch.id }
         });
       }
+    });
+
+    // Ghi audit log
+    await writeAuditLog(userId, 'APPROVE_IMPORT', 'ImportReceipt', id, {
+      supplierId: receipt.supplierId,
+      itemCount: receipt.items.length,
     });
 
     return sendSuccess(res, null, 'Duyệt phiếu nhập thành công');
