@@ -8,6 +8,7 @@ const {
   updateProduct,
   deleteProduct,
   updateBatchLocation,
+  searchProductByCode,
 } = require('../controllers/productController');
 
 const router = express.Router();
@@ -27,6 +28,28 @@ router.use(authenticate, requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER));
  *         description: Success
  */
 router.get('/', listProducts);
+/**
+ * @swagger
+ * /api/products/search:
+ *   get:
+ *     tags: [Products]
+ *     summary: Search product by SKU or Barcode
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: code
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *       404:
+ *         description: Not found
+ */
+router.get('/search', searchProductByCode);
+
 /**
  * @swagger
  * /api/products/{id}:

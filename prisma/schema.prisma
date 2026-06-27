@@ -40,20 +40,22 @@ enum ReturnStatus {
 }
 
 model User {
-  id                     String           @id @default(uuid())
+  id                     String             @id @default(uuid())
   name                   String
-  email                  String           @unique
+  email                  String             @unique
   password               String
-  role                   Role             @default(EMPLOYEE)
-  isActive               Boolean          @default(true)
-  createdImportReceipts  ImportReceipt[]  @relation("ImportCreatedBy")
-  approvedImportReceipts ImportReceipt[]  @relation("ImportApprovedBy")
-  createdExportReceipts  ExportReceipt[]  @relation("ExportCreatedBy")
-  approvedExportReceipts ExportReceipt[]  @relation("ExportApprovedBy")
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
+  role                   Role               @default(EMPLOYEE)
+  isActive               Boolean            @default(true)
+  createdImportReceipts  ImportReceipt[]    @relation("ImportCreatedBy")
+  approvedImportReceipts ImportReceipt[]    @relation("ImportApprovedBy")
+  createdExportReceipts  ExportReceipt[]    @relation("ExportCreatedBy")
+  approvedExportReceipts ExportReceipt[]    @relation("ExportApprovedBy")
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
   inventoryChecks        InventoryCheck[]
-  returnReceipts         ReturnReceipt[]
+  returnReceipts            ReturnReceipt[]
+  createdInternalTransfers  InternalTransfer[] @relation("TransferCreatedBy")
+  approvedInternalTransfers InternalTransfer[] @relation("TransferApprovedBy")
 }
 
 model Category {
@@ -78,46 +80,49 @@ model Supplier {
 }
 
 model Product {
-  id                  String               @id @default(uuid())
-  sku                 String               @unique
-  barcode             String?              @unique
-  name                String
-  unit                String
-  minStock            Int                  @default(0)
-  costPrice           Decimal              @db.Decimal(12, 2)
-  salePrice           Decimal              @db.Decimal(12, 2)
-  currentStock        Int                  @default(0)
-  categoryId          String
-  supplierId          String
-  category            Category             @relation(fields: [categoryId], references: [id])
-  supplier            Supplier             @relation(fields: [supplierId], references: [id])
-  stockBatches        StockBatch[]
-  importItems         ImportItem[]
-  exportItems         ExportItem[]
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  inventoryCheckItems InventoryCheckItem[]
-  returnItems         ReturnItem[]
+  id                    String                 @id @default(uuid())
+  sku                   String                 @unique
+  barcode               String?                @unique
+  name                  String
+  unit                  String
+  minStock              Int                    @default(0)
+  costPrice             Decimal                @db.Decimal(12, 2)
+  salePrice             Decimal                @db.Decimal(12, 2)
+  currentStock          Int                    @default(0)
+  categoryId            String
+  supplierId            String
+  category              Category               @relation(fields: [categoryId], references: [id])
+  supplier              Supplier               @relation(fields: [supplierId], references: [id])
+  stockBatches          StockBatch[]
+  importItems           ImportItem[]
+  exportItems           ExportItem[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  inventoryCheckItems   InventoryCheckItem[]
+  returnItems           ReturnItem[]
+  internalTransferItems InternalTransferItem[]
 
   @@index([categoryId])
   @@index([supplierId])
 }
 
 model StockBatch {
-  id                  String               @id @default(uuid())
-  productId           String
-  lotNumber           String
-  expiryDate          DateTime
-  quantity            Int
-  remainingQuantity   Int
-  product             Product              @relation(fields: [productId], references: [id])
-  importItem          ImportItem?
-  exportItems         ExportItem[]
-  locationId          String?
-  location            Location?            @relation(fields: [locationId], references: [id])
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  inventoryCheckItems InventoryCheckItem[]
+  id                    String                 @id @default(uuid())
+  productId             String
+  lotNumber             String
+  expiryDate            DateTime
+  quantity              Int
+  remainingQuantity     Int
+  product               Product                @relation(fields: [productId], references: [id])
+  importItem            ImportItem?
+  exportItems           ExportItem[]
+  locationId            String?
+  location              Location?              @relation(fields: [locationId], references: [id])
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  inventoryCheckItems   InventoryCheckItem[]
+  fromTransferItems     InternalTransferItem[] @relation("TransferFromBatch")
+  toTransferItems       InternalTransferItem[] @relation("TransferToBatch")
 
   @@index([productId, expiryDate])
 }
@@ -177,9 +182,9 @@ model ExportReceipt {
   approvedBy     User?         @relation("ExportApprovedBy", fields: [approvedById], references: [id])
   items          ExportItem[]
   customerId     String?
-  customer     Customer?     @relation(fields: [customerId], references: [id])
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([exportType, status])
   @@index([customerId])
@@ -215,14 +220,49 @@ model Customer {
 }
 
 model Location {
-  id          String       @id @default(uuid())
-  code        String       @unique
-  name        String
-  description String?
-  batches     StockBatch[]
-  importItems ImportItem[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String             @id @default(uuid())
+  code            String             @unique
+  name            String
+  description     String?
+  batches         StockBatch[]
+  importItems     ImportItem[]
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  fromTransferItems   InternalTransferItem[] @relation("TransferFromLocation")
+  toTransferItems     InternalTransferItem[] @relation("TransferToLocation")
+}
+
+model InternalTransfer {
+  id               String                 @id @default(uuid())
+  code             String                 @unique
+  note             String?
+  status           ReceiptStatus          @default(PENDING)
+  createdById      String
+  approvedById     String?
+  rejectedReason   String?
+  approvedAt       DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  createdBy        User                   @relation("TransferCreatedBy", fields: [createdById], references: [id])
+  approvedBy       User?                  @relation("TransferApprovedBy", fields: [approvedById], references: [id])
+  items            InternalTransferItem[]
+}
+
+model InternalTransferItem {
+  id             String           @id @default(uuid())
+  transferId     String
+  productId      String
+  fromBatchId    String
+  toBatchId      String?
+  fromLocationId String
+  toLocationId   String
+  quantity       Int
+  transfer       InternalTransfer @relation(fields: [transferId], references: [id])
+  product        Product          @relation(fields: [productId], references: [id])
+  fromBatch      StockBatch       @relation("TransferFromBatch", fields: [fromBatchId], references: [id])
+  toBatch        StockBatch?      @relation("TransferToBatch", fields: [toBatchId], references: [id])
+  fromLocation   Location         @relation("TransferFromLocation", fields: [fromLocationId], references: [id])
+  toLocation     Location         @relation("TransferToLocation", fields: [toLocationId], references: [id])
 }
 
 model InventoryCheck {

@@ -4,6 +4,7 @@ const { mapPrismaError } = require('../utils/prismaError');
 const { normalizeSearch, toPositiveInt } = require('../utils/request');
 const { ReceiptStatus } = require('@prisma/client');
 const { writeAuditLog } = require('../utils/auditLog');
+const { getIO } = require('../utils/socket');
 
 function generateReceiptCode() {
   const timestamp = Date.now().toString().slice(-6);
@@ -211,6 +212,12 @@ async function approveImport(req, res, next) {
       supplierId: receipt.supplierId,
       itemCount: receipt.items.length,
     });
+
+    try {
+      getIO().emit('stock_updated', { type: 'IMPORT_APPROVED', id });
+    } catch (err) {
+      console.error('Socket emit error:', err);
+    }
 
     return sendSuccess(res, null, 'Duyệt phiếu nhập thành công');
   } catch (error) {

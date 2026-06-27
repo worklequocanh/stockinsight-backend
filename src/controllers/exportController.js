@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { writeAuditLog } = require('../utils/auditLog');
+const { getIO } = require('../utils/socket');
 
 exports.listExports = async (req, res, next) => {
   try {
@@ -215,6 +216,12 @@ exports.approveExport = async (req, res, next) => {
       customerId: receiptForLog.customerId,
       itemCount: receiptForLog.items?.length,
     });
+
+    try {
+      getIO().emit('stock_updated', { type: 'EXPORT_APPROVED', id });
+    } catch (err) {
+      console.error('Socket emit error:', err);
+    }
 
     res.json({ success: true, data: result });
   } catch (error) {

@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { mapPrismaError } = require('../utils/prismaError');
 const { normalizeSearch, toPositiveInt } = require('../utils/request');
+const QRCode = require('qrcode');
 
 function buildWhere({ search, categoryId, supplierId }) {
   const where = {};
@@ -110,7 +111,10 @@ async function getProductById(req, res, next) {
       return sendError(res, 'Không tìm thấy sản phẩm', 404);
     }
 
-    return sendSuccess(res, { item });
+    const qrData = JSON.stringify({ sku: item.sku, id: item.id });
+    const qrCodeBase64 = await QRCode.toDataURL(qrData);
+
+    return sendSuccess(res, { item: { ...item, qrCodeBase64 } });
   } catch (error) {
     return next(error);
   }
@@ -284,6 +288,36 @@ async function updateBatchLocation(req, res, next) {
   }
 }
 
+async function searchProductByCode(req, res, next) {
+  try {
+    const code = String(req.query.code || '').trim();
+    if (!code) {
+      return sendError(res, 'Vui lòng cung cấp mã code', 400);
+    }
+
+    const item = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { sku: code },
+          { barcode: code }
+        ]
+      },
+      include: {
+        category: true,
+        supplier: true
+      }
+    });
+
+    if (!item) {
+      return sendError(res, 'Không tìm thấy sản phẩm', 404);
+    }
+
+    return sendSuccess(res, { item });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   listProducts,
   getProductById,
@@ -291,4 +325,6 @@ module.exports = {
   updateProduct,
   deleteProduct,
   updateBatchLocation,
+  searchProductByCode,
 };
+

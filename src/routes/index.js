@@ -15,6 +15,7 @@ const returnRoutes = require('./returns');
 const auditLogRoutes = require('./auditLogs');
 const userRoutes = require('./users');
 const notificationRoutes = require('./notificationRoutes');
+const transferRoutes = require('./transfers');
 
 const router = express.Router();
 
@@ -34,5 +35,6 @@ router.use('/returns', returnRoutes);
 router.use('/audit-logs', auditLogRoutes);
 router.use('/users', userRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/transfers', transferRoutes);
 
 module.exports = router;
