@@ -2,6 +2,9 @@ const app = require('./app');
 const env = require('./config/env');
 const prisma = require('./config/prisma');
 
+// Init Cron Jobs
+require('./jobs/inventoryCron');
+
 async function start() {
   try {
     await prisma.$connect();

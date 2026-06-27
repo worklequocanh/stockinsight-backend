@@ -14,6 +14,7 @@ const inventoryCheckRoutes = require('./inventoryChecks');
 const returnRoutes = require('./returns');
 const auditLogRoutes = require('./auditLogs');
 const userRoutes = require('./users');
+const notificationRoutes = require('./notificationRoutes');
 
 const router = express.Router();
 
@@ -32,5 +33,6 @@ router.use('/inventory-checks', inventoryCheckRoutes);
 router.use('/returns', returnRoutes);
 router.use('/audit-logs', auditLogRoutes);
 router.use('/users', userRoutes);
+router.use('/notifications', notificationRoutes);
 
 module.exports = router;

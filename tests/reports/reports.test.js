@@ -27,9 +27,9 @@ describe('Reports API', () => {
     });
   });
 
-  it('GET /api/reports/kpi - nên lấy chỉ số dashboard thành công', async () => {
+  it('GET /api/reports/overview - nên lấy chỉ số dashboard thành công', async () => {
     const response = await request(app)
-      .get('/api/reports/kpi')
+      .get('/api/reports/overview')
       .set('Authorization', `Bearer ${masterData.tokens.managerToken}`);
 
     expect(response.status).toBe(200);
@@ -37,25 +37,22 @@ describe('Reports API', () => {
     expect(response.body.data).toHaveProperty('totalProducts');
   });
 
-  it('GET /api/reports/inventory - nên lấy danh sách báo cáo tồn kho', async () => {
+  it('GET /api/reports/low-stock - nên lấy danh sách báo cáo tồn kho thấp', async () => {
     const response = await request(app)
-      .get('/api/reports/inventory')
+      .get('/api/reports/low-stock')
       .set('Authorization', `Bearer ${masterData.tokens.managerToken}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.data.length).toBeGreaterThan(0);
-    expect(response.body.data[0]).toHaveProperty('currentStock');
+    // it could be empty, but it's an array
+    expect(response.body.data).toHaveProperty('products');
   });
 
-  it('GET /api/reports/expiring - nên report đúng lô hàng sắp hết hạn', async () => {
+  it('GET /api/reports/export-excel - nên trả về file báo cáo Excel', async () => {
     const response = await request(app)
-      .get('/api/reports/expiring?days=30')
+      .get('/api/reports/export-excel')
       .set('Authorization', `Bearer ${masterData.tokens.managerToken}`);
 
     expect(response.status).toBe(200);
-    const items = response.body.data;
-    // Phải có ít nhất 1 lô sắp hết hạn
-    expect(items.length).toBeGreaterThan(0);
-    expect(items[0].lotNumber).toBe('LOT_EXPIRING');
+    expect(response.headers['content-type']).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   });
 });

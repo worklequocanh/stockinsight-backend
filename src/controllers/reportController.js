@@ -1,252 +1,291 @@
-const prisma = require('../config/prisma')
-const { sendSuccess, sendError } = require('../utils/apiResponse')
+const prisma = require('../config/prisma');
+const { catchAsync } = require('../utils/errorHandler');
 
-// Tính toán KPI Tổng quan
-exports.getDashboardKPI = async (req, res) => {
-  try {
-    // 1. Tổng số sản phẩm
-    const totalProducts = await prisma.product.count()
+exports.getOverview = catchAsync(async (req, res) => {
+  // Total Products
+  const totalProducts = await prisma.product.count();
 
-    // 2. Tổng giá trị tồn kho
-    const products = await prisma.product.findMany({
-      select: { currentStock: true, costPrice: true }
-    })
-    const totalStockValue = products.reduce((sum, p) => {
-      return sum + (p.currentStock * Number(p.costPrice))
-    }, 0)
+  // Total Categories
+  const totalCategories = await prisma.category.count();
 
-    // 3. Số sản phẩm tồn kho thấp
-    const lowStockProducts = await prisma.product.count({
-      where: {
-        currentStock: {
-          lte: prisma.product.fields.minStock
-        }
-      }
-    })
+  // Total Suppliers
+  const totalSuppliers = await prisma.supplier.count();
 
-    // 4. Số lô hàng sắp hết hạn (trong vòng 30 ngày)
-    const thirtyDaysFromNow = new Date()
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
+  // Low stock products
+  const lowStockResult = await prisma.$queryRaw`SELECT COUNT(*) as count FROM "Product" WHERE "currentStock" <= "minStock"`;
+  const lowStockCount = Number(lowStockResult[0].count);
 
-    const expiringBatches = await prisma.stockBatch.count({
-      where: {
-        remainingQuantity: { gt: 0 },
-        expiryDate: { lte: thirtyDaysFromNow }
-      }
-    })
-
-    sendSuccess(res, {
-      totalProducts,
-      totalStockValue,
-      lowStockProducts,
-      expiringBatches
-    }, 'Lấy KPI thành công')
-  } catch (err) {
-    sendError(res, 'Lỗi khi lấy KPI tổng quan', 500, err.message)
-  }
-}
-
-// Lấy báo cáo Nhập/Xuất theo tháng (6 tháng gần nhất)
-exports.getMonthlyReport = async (req, res) => {
-  try {
-    const sixMonthsAgo = new Date()
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
-    sixMonthsAgo.setDate(1) // Bắt đầu từ ngày 1 của tháng đó
-    sixMonthsAgo.setHours(0, 0, 0, 0)
-
-    // Lấy phiếu nhập (đã duyệt)
-    const imports = await prisma.importReceipt.findMany({
-      where: { status: 'APPROVED', approvedAt: { gte: sixMonthsAgo } },
-      include: { items: true }
-    })
-
-    // Lấy phiếu xuất (đã duyệt)
-    const exports = await prisma.exportReceipt.findMany({
-      where: { status: 'APPROVED', approvedAt: { gte: sixMonthsAgo } },
-      include: { items: true }
-    })
-
-    const monthlyData = {}
-
-    // Khởi tạo các tháng
-    for (let i = 0; i < 6; i++) {
-      const d = new Date()
-      d.setMonth(d.getMonth() - i)
-      const label = `${d.getMonth() + 1}/${d.getFullYear()}`
-      monthlyData[label] = { month: label, importValue: 0, exportValue: 0, sortKey: d.getTime() }
+  // Expiring Batches (in next 30 days)
+  const next30Days = new Date();
+  next30Days.setDate(next30Days.getDate() + 30);
+  const expiringBatchesCount = await prisma.stockBatch.count({
+    where: {
+      expiryDate: { lte: next30Days },
+      remainingQuantity: { gt: 0 }
     }
+  });
 
-    // Gộp dữ liệu nhập
-    imports.forEach(receipt => {
-      const d = new Date(receipt.approvedAt)
-      const label = `${d.getMonth() + 1}/${d.getFullYear()}`
-      if (monthlyData[label]) {
-        const value = receipt.items.reduce((sum, item) => sum + (item.quantity * Number(item.unitPrice)), 0)
-        monthlyData[label].importValue += value
-      }
-    })
+  // Total Inventory Value
+  const products = await prisma.product.findMany({
+    select: { currentStock: true, costPrice: true }
+  });
+  const totalInventoryValue = products.reduce((sum, p) => sum + (p.currentStock * Number(p.costPrice)), 0);
 
-    // Gộp dữ liệu xuất
-    exports.forEach(receipt => {
-      const d = new Date(receipt.approvedAt)
-      const label = `${d.getMonth() + 1}/${d.getFullYear()}`
-      if (monthlyData[label]) {
-        const value = receipt.items.reduce((sum, item) => sum + (item.quantity * Number(item.unitPrice)), 0)
-        monthlyData[label].exportValue += value
-      }
-    })
+  // Pending Receipts
+  const pendingImports = await prisma.importReceipt.count({ where: { status: 'PENDING' } });
+  const pendingExports = await prisma.exportReceipt.count({ where: { status: 'PENDING' } });
 
-    // Sắp xếp theo tháng tăng dần
-    const result = Object.values(monthlyData).sort((a, b) => a.sortKey - b.sortKey).map(d => ({
-      month: d.month,
-      importValue: d.importValue,
-      exportValue: d.exportValue
-    }))
+  res.status(200).json({
+    status: 'success',
+    data: {
+      totalProducts,
+      totalCategories,
+      totalSuppliers,
+      lowStockProducts: lowStockCount,
+      totalStockValue: totalInventoryValue,
+      expiringBatches: expiringBatchesCount,
+      pendingImports,
+      pendingExports
+    }
+  });
+});
 
-    sendSuccess(res, result, 'Lấy báo cáo theo tháng thành công')
-  } catch (err) {
-    sendError(res, 'Lỗi khi lấy báo cáo theo tháng', 500, err.message)
+exports.getRecentActivities = catchAsync(async (req, res) => {
+  const recentImports = await prisma.importReceipt.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    include: { supplier: { select: { name: true } }, createdBy: { select: { name: true } } }
+  });
+
+  const recentExports = await prisma.exportReceipt.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    include: { createdBy: { select: { name: true } } }
+  });
+
+  let activities = [
+    ...recentImports.map(item => ({ ...item, type: 'IMPORT' })),
+    ...recentExports.map(item => ({ ...item, type: 'EXPORT' }))
+  ];
+  
+  activities.sort((a, b) => b.createdAt - a.createdAt);
+  activities = activities.slice(0, 10);
+
+  res.status(200).json({ status: 'success', data: { activities } });
+});
+
+exports.getLowStockProducts = catchAsync(async (req, res) => {
+  const lowStockProducts = await prisma.$queryRaw`
+    SELECT id, sku, name, unit, "minStock", "currentStock"
+    FROM "Product"
+    WHERE "currentStock" <= "minStock"
+    ORDER BY "currentStock" ASC
+  `;
+  res.status(200).json({ status: 'success', data: { products: lowStockProducts } });
+});
+
+exports.getMonthlyData = catchAsync(async (req, res) => {
+  // Generate last 6 months
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    months.push({
+      month: `${d.getMonth() + 1}/${d.getFullYear()}`,
+      importValue: 0,
+      exportValue: 0,
+      year: d.getFullYear(),
+      m: d.getMonth()
+    });
   }
-}
 
-// Báo cáo top sản phẩm bán chạy (SALE)
-exports.getTopSelling = async (req, res) => {
-  try {
-    const exports = await prisma.exportItem.groupBy({
-      by: ['productId'],
-      where: {
-        exportReceipt: {
-          exportType: 'SALE',
-          status: 'APPROVED'
-        }
-      },
-      _sum: {
-        quantity: true
-      },
-      orderBy: {
-        _sum: {
-          quantity: 'desc'
-        }
-      },
-      take: 5
-    })
+  // Get data for these months (Approximation)
+  // To keep it simple without complex SQL, we'll fetch all approved receipts and aggregate in JS 
+  // (Assuming data is not too huge for a demo, otherwise raw SQL GROUP BY is better)
+  
+  const imports = await prisma.importItem.findMany({
+    where: { importReceipt: { status: 'APPROVED' } },
+    include: { importReceipt: true }
+  });
+  
+  const exports = await prisma.exportItem.findMany({
+    where: { exportReceipt: { status: 'APPROVED' } },
+    include: { exportReceipt: true }
+  });
 
-    const productIds = exports.map(e => e.productId)
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
-      select: { id: true, name: true, sku: true }
-    })
+  imports.forEach(item => {
+    const d = new Date(item.importReceipt.approvedAt || item.importReceipt.createdAt);
+    const mStr = `${d.getMonth() + 1}/${d.getFullYear()}`;
+    const mObj = months.find(m => m.month === mStr);
+    if (mObj) {
+      mObj.importValue += item.quantity * Number(item.unitPrice);
+    }
+  });
 
-    const result = exports.map(e => {
-      const p = products.find(prod => prod.id === e.productId)
-      return {
-        id: e.productId,
-        name: p?.name,
-        sku: p?.sku,
-        totalSold: e._sum.quantity
+  exports.forEach(item => {
+    const d = new Date(item.exportReceipt.approvedAt || item.exportReceipt.createdAt);
+    const mStr = `${d.getMonth() + 1}/${d.getFullYear()}`;
+    const mObj = months.find(m => m.month === mStr);
+    if (mObj) {
+      mObj.exportValue += item.quantity * Number(item.unitPrice);
+    }
+  });
+
+  res.status(200).json({ status: 'success', data: months });
+});
+
+exports.getTopSelling = catchAsync(async (req, res) => {
+  // Aggregate export items
+  const exports = await prisma.exportItem.findMany({
+    where: { exportReceipt: { status: 'APPROVED' } },
+    include: { product: true }
+  });
+
+  const salesMap = {};
+  exports.forEach(item => {
+    if (!salesMap[item.productId]) {
+      salesMap[item.productId] = {
+        id: item.productId,
+        name: item.product.name,
+        sku: item.product.sku,
+        totalSold: 0
+      };
+    }
+    salesMap[item.productId].totalSold += item.quantity;
+  });
+
+  let topSelling = Object.values(salesMap);
+  topSelling.sort((a, b) => b.totalSold - a.totalSold);
+  topSelling = topSelling.slice(0, 5);
+
+  res.status(200).json({ status: 'success', data: topSelling });
+});
+
+const ExcelJS = require('exceljs');
+
+exports.exportExcel = catchAsync(async (req, res) => {
+  const products = await prisma.product.findMany({
+    include: { category: true }
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Báo cáo tồn kho');
+
+  worksheet.columns = [
+    { header: 'ID', key: 'id', width: 40 },
+    { header: 'SKU', key: 'sku', width: 20 },
+    { header: 'Tên Sản Phẩm', key: 'name', width: 40 },
+    { header: 'Danh mục', key: 'category', width: 30 },
+    { header: 'Đơn vị', key: 'unit', width: 15 },
+    { header: 'Tồn Kho', key: 'stock', width: 15 },
+    { header: 'Tồn Tối Thiểu', key: 'minStock', width: 20 },
+    { header: 'Trạng thái', key: 'status', width: 20 }
+  ];
+
+  products.forEach(p => {
+    worksheet.addRow({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      category: p.category.name,
+      unit: p.unit,
+      stock: p.currentStock,
+      minStock: p.minStock,
+      status: p.currentStock <= p.minStock ? 'Tồn thấp' : 'Bình thường'
+    });
+  });
+
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader(
+    'Content-Disposition',
+    'attachment; filename=' + 'Bao_Cao_Ton_Kho.xlsx'
+  );
+
+  await workbook.xlsx.write(res);
+  res.status(200).end();
+});
+
+exports.getInventoryReport = catchAsync(async (req, res) => {
+  const products = await prisma.product.findMany({
+    include: { category: true, supplier: true }
+  });
+  
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const exportsList = await prisma.exportItem.findMany({
+    where: { 
+      exportReceipt: { 
+        status: 'APPROVED',
+        createdAt: { gte: thirtyDaysAgo } 
       }
-    })
+    }
+  });
 
-    sendSuccess(res, result, 'Lấy báo cáo sản phẩm bán chạy thành công')
-  } catch (err) {
-    sendError(res, 'Lỗi khi lấy top sản phẩm bán chạy', 500, err.message)
-  }
-}
+  const exportMap = {};
+  exportsList.forEach(item => {
+    exportMap[item.productId] = (exportMap[item.productId] || 0) + item.quantity;
+  });
 
-// Báo cáo chi tiết tồn kho
-exports.getInventoryReport = async (req, res) => {
-  try {
-    const products = await prisma.product.findMany({
-      include: {
-        category: true,
-        supplier: true
-      }
-    })
+  const data = products.map(p => {
+    const exportedLast30 = exportMap[p.id] || 0;
+    const avgDailyExport = Math.round((exportedLast30 / 30) * 10) / 10;
+    const daysRemaining = avgDailyExport > 0 ? Math.floor(p.currentStock / avgDailyExport) : null;
+    const isLowStock = p.currentStock <= p.minStock;
+    const suggestedOrder = isLowStock ? Math.max(0, p.minStock * 2 - p.currentStock) : 0;
 
-    // Lấy lịch sử xuất kho trong 30 ngày qua để tính tốc độ bán trung bình
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    return {
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      category: p.category ? p.category.name : '-',
+      supplier: p.supplier ? p.supplier.name : '-',
+      currentStock: p.currentStock,
+      unit: p.unit,
+      minStock: p.minStock,
+      avgDailyExport,
+      daysRemaining,
+      isLowStock,
+      suggestedOrder
+    };
+  });
 
-    const recentExports = await prisma.exportItem.groupBy({
-      by: ['productId'],
-      where: {
-        exportReceipt: { status: 'APPROVED', approvedAt: { gte: thirtyDaysAgo } }
-      },
-      _sum: { quantity: true }
-    })
+  res.status(200).json({ status: 'success', data });
+});
 
-    const result = products.map(p => {
-      const exported = recentExports.find(e => e.productId === p.id)?._sum.quantity || 0
-      const avgDailyExport = exported / 30
-      const daysRemaining = avgDailyExport > 0 ? Math.floor(p.currentStock / avgDailyExport) : null
-      const isLowStock = p.currentStock <= p.minStock
-      const suggestedOrder = isLowStock ? (p.minStock * 2) - p.currentStock : 0
+exports.getExpiringReport = catchAsync(async (req, res) => {
+  const next30Days = new Date();
+  next30Days.setDate(next30Days.getDate() + 30);
 
-      return {
-        id: p.id,
-        sku: p.sku,
-        name: p.name,
-        category: p.category.name,
-        supplier: p.supplier.name,
-        unit: p.unit,
-        currentStock: p.currentStock,
-        minStock: p.minStock,
-        isLowStock,
-        avgDailyExport: Number(avgDailyExport.toFixed(2)),
-        daysRemaining,
-        suggestedOrder
-      }
-    })
+  const expiringBatches = await prisma.stockBatch.findMany({
+    where: {
+      expiryDate: { lte: next30Days },
+      remainingQuantity: { gt: 0 }
+    },
+    include: { product: true },
+    orderBy: { expiryDate: 'asc' }
+  });
 
-    sendSuccess(res, result, 'Lấy báo cáo tồn kho thành công')
-  } catch (err) {
-    sendError(res, 'Lỗi khi lấy báo cáo tồn kho', 500, err.message)
-  }
-}
+  const data = expiringBatches.map(batch => {
+    const daysUntilExpiry = Math.ceil((new Date(batch.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+    let severity = 'approved';
+    if (daysUntilExpiry <= 7) severity = 'danger';
+    else if (daysUntilExpiry <= 15) severity = 'warning';
 
-// Báo cáo các lô hàng sắp hết hạn (<= 30 ngày)
-exports.getExpiringBatches = async (req, res) => {
-  try {
-    const thirtyDaysFromNow = new Date()
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
+    return {
+      id: batch.id,
+      productName: batch.product.name,
+      productSku: batch.product.sku,
+      lotNumber: batch.lotNumber,
+      remainingQuantity: batch.remainingQuantity,
+      expiryDate: batch.expiryDate,
+      daysUntilExpiry,
+      severity
+    };
+  });
 
-    const batches = await prisma.stockBatch.findMany({
-      where: {
-        remainingQuantity: { gt: 0 },
-        expiryDate: { lte: thirtyDaysFromNow }
-      },
-      include: {
-        product: {
-          select: { name: true, sku: true }
-        }
-      },
-      orderBy: { expiryDate: 'asc' }
-    })
-
-    const result = batches.map(b => {
-      const now = new Date()
-      const diffTime = new Date(b.expiryDate).getTime() - now.getTime()
-      const daysUntilExpiry = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-
-      let severity = 'success'
-      if (daysUntilExpiry <= 7) severity = 'danger'
-      else if (daysUntilExpiry <= 14) severity = 'warning'
-      else severity = 'info'
-
-      return {
-        id: b.id,
-        productName: b.product.name,
-        productSku: b.product.sku,
-        lotNumber: b.lotNumber,
-        remainingQuantity: b.remainingQuantity,
-        expiryDate: b.expiryDate,
-        daysUntilExpiry,
-        severity
-      }
-    })
-
-    sendSuccess(res, result, 'Lấy lô hàng sắp hết hạn thành công')
-  } catch (err) {
-    sendError(res, 'Lỗi khi lấy lô hàng sắp hết hạn', 500, err.message)
-  }
-}
+  res.status(200).json({ status: 'success', data });
+});
