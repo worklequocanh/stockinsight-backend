@@ -26,6 +26,7 @@ app.get('/', (req, res) => {
   return sendSuccess(res, {
     message: 'stockinsight-backend is running',
     api: '/api/health',
+    swagger: '/api-docs'
   });
 });
 

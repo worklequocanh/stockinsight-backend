@@ -1,82 +1,156 @@
-# StockInsight
+# 📦 StockInsight - Inventory Management System Backend
 
-Hệ thống quản lý kho hàng - Đồ án thực tập (Giai đoạn 1 - 7)
+> Hệ thống quản lý kho hàng chuyên nghiệp - Đồ án thực tập (Giai đoạn 1 - 7).
 
-## Các giai đoạn đã hoàn thành
+Ứng dụng Backend cho nền tảng StockInsight, hỗ trợ quản lý nhập/xuất kho theo phương pháp FEFO (First Expired First Out), theo dõi tồn kho theo thời gian thực và cung cấp hệ thống báo cáo, cảnh báo trực quan.
 
-- **Phase 1 & 2**: Khởi tạo dự án, thiết lập CSDL (Prisma + PostgreSQL), JWT Authentication, CRUD cơ bản.
-- **Phase 3**: Quản lý Nhập kho (Import) & Xuất kho (Export) với phương pháp FEFO (First Expired First Out).
-- **Phase 4**: Cải thiện giao diện với bố cục Dashboard chuẩn (Sidebar, Tabs), chia nhỏ component, tăng trải nghiệm người dùng (UX/UI).
-- **Phase 5**: Bản địa hóa (Localization) toàn bộ ứng dụng sang Tiếng Việt.
-- **Phase 6**: Tồn kho, cảnh báo và Dashboard trực quan (Chart.js).
-- **Phase 7**: Kiểm thử, Tối ưu và Deploy (Hoàn thiện toàn bộ).
-  - Viết tài liệu Kịch bản kiểm thử (Test Cases).
-  - Hoàn thiện dữ liệu Demo phong phú (6 tháng giao dịch).
-  - Cấu hình file triển khai tự động (Render, Vercel).
+## ✨ Các tính năng nổi bật (Features)
 
-## Hướng dẫn Triển khai (Deploy lên Production)
+- **🔐 Xác thực & Phân quyền (Authentication & Authorization):** Sử dụng JWT, hỗ trợ nhiều vai trò (Admin, Manager, Employee).
+- **📦 Quản lý Nhập/Xuất kho (Import/Export):** Thuật toán xuất kho thông minh áp dụng nguyên tắc **FEFO** (First Expired First Out) để giảm thiểu hao phí hàng hết hạn.
+- **📊 Báo cáo & Cảnh báo:** Dashboard theo thời gian thực, quản lý cảnh báo tồn kho, tích hợp Cron Jobs (`node-cron`) để tự động kiểm tra định kỳ.
+- **⚡ Real-time Updates:** Hỗ trợ kết nối real-time (`socket.io`) cho các thông báo và cảnh báo cập nhật trực tiếp đến người dùng.
+- **🌐 RESTful API & Swagger:** API chuẩn RESTful, được tài liệu hóa tự động bằng Swagger UI.
+- **✅ Unit Testing:** Đảm bảo chất lượng bằng các kịch bản test tự động với Jest và Supertest.
+- **🌍 Localization:** Hệ thống hỗ trợ đa ngôn ngữ, tối ưu trải nghiệm (Phase 5).
 
-Dự án được cấu hình sẵn để dễ dàng deploy miễn phí lên **Render** (cho Backend + DB) và **Vercel** (cho Frontend).
+## 🛠 Tech Stack (Công nghệ sử dụng)
 
-### 1. Triển khai Backend (Render.com)
-1. Đăng ký tài khoản tại [Render](https://render.com).
-2. Tạo một **PostgreSQL Database** mới (đợi Render tạo xong, lấy chuỗi kết nối - `Internal Database URL`).
-3. Tạo một **Web Service**, kết nối với Repository Github `stockinsight-backend`.
-4. Render sẽ tự động đọc file `render.yaml` trong repo và cài đặt ứng dụng Node.js.
-5. Truy cập phần **Environment** của Web Service, điền giá trị cho các biến:
-   - `JWT_SECRET`: Một chuỗi bí mật (ví dụ: `my-super-secret-key-123`).
-   - `DATABASE_URL`: Lấy từ bước 2.
-   - `CORS_ORIGIN`: Tạm để `*` (Sau khi deploy xong Frontend, hãy quay lại đây cập nhật thành URL của Frontend).
-6. Ở bước `Build Command`, Render sẽ tự chạy `npm install` và bạn cần chạy `npm run prisma:generate && npm run db:push && npm run prisma:seed`. (Hoặc truy cập Shell của Render để chạy `npx prisma db push` và `npm run prisma:seed`).
+- **Runtime Environment:** [Node.js](https://nodejs.org/)
+- **Framework:** [Express.js](https://expressjs.com/)
+- **Database:** [PostgreSQL](https://www.postgresql.org/)
+- **ORM:** [Prisma](https://www.prisma.io/)
+- **Testing:** [Jest](https://jestjs.io/), Supertest
+- **Tiện ích khác:** `socket.io` (Realtime), `node-cron` (Jobs), `exceljs` (Xuất file Excel), `jsonwebtoken` (Auth), `bcryptjs` (Mã hóa mật khẩu), `helmet` & `cors` (Bảo mật).
 
-### 2. Triển khai Frontend (Vercel.com)
-1. Đăng ký tài khoản tại [Vercel](https://vercel.com).
-2. Chọn **Add New Project**, liên kết với Repository Github `stockinsight-frontend`.
-3. Vercel tự động nhận diện đây là dự án `Vite` (mặc định Framework Preset là Vite).
-4. Mở phần **Environment Variables**, thêm biến:
-   - `VITE_API_URL`: Điền URL của Backend vừa deploy ở bước trên (ví dụ: `https://stockinsight-backend.onrender.com/api`).
-5. Bấm **Deploy**. Vercel sẽ đọc file `vercel.json` để cấu hình Rewrite URL cho React Router.
+## 📂 Cấu trúc dự án (Project Structure)
 
----
+```text
+stockinsight-backend/
+├── prisma/             # Schema của Prisma & scripts seed dữ liệu
+├── src/                # Source code chính
+│   ├── config/         # Cấu hình (Database, Swagger, v.v.)
+│   ├── controllers/    # Xử lý logic API (Request/Response)
+│   ├── jobs/           # Cron jobs chạy ngầm (ví dụ cảnh báo hàng sắp hết hạn)
+│   ├── middleware/     # Các middlewares (Auth, Error handling, Validation)
+│   ├── routes/         # Định nghĩa routing API
+│   ├── utils/          # Các hàm helper tiện ích
+│   ├── app.js          # Khởi tạo Express app và apply middlewares
+│   └── server.js       # Khởi động server
+├── tests/              # Các bài Unit Test / Integration Test (Jest)
+├── .env.example        # Mẫu file biến môi trường
+├── package.json        # Định nghĩa dependencies và scripts
+└── render.yaml         # Cấu hình deploy tự động trên Render.com
+```
 
-## Cài đặt và Chạy ứng dụng (Local)
+## 🚀 Hướng dẫn Cài đặt & Chạy ứng dụng (Local Development)
 
-### Yêu cầu
-- Node.js
-- PostgreSQL
-- WSL (Dành cho Windows)
+### Yêu cầu hệ thống (Prerequisites)
+- [Node.js](https://nodejs.org/) (Khuyến nghị v18+)
+- [PostgreSQL](https://www.postgresql.org/) (Đang chạy local hoặc dùng remote database)
+- [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) (Khuyến nghị dành cho Windows)
 
-### 1. Cài đặt Backend
+### 1. Cài đặt dependencies
+
+Mở terminal (WSL) và chạy:
+
 ```bash
+git clone <repository_url>
 cd stockinsight-backend
 npm install
-# Tạo file .env và cấu hình DATABASE_URL (Ví dụ: postgresql://user:pass@localhost:5432/stockinsight)
-npx prisma migrate dev
-npm run prisma:seed # Nạp dữ liệu mẫu
-npm run dev
 ```
 
-### 2. Cài đặt Frontend
+### 2. Thiết lập biến môi trường
+Copy file `.env.example` thành `.env` và tùy chỉnh cho phù hợp với môi trường của bạn:
+
 ```bash
-cd stockinsight-frontend
-npm install
-# Tạo file .env và thiết lập VITE_API_URL=http://localhost:3001/api
-npm run dev
+cp .env.example .env
 ```
 
-### 3. Tài khoản Demo
-- **Admin**: `admin@stockinsight.local` / `admin123`
-- **Manager**: `manager@stockinsight.local` / `admin123`
-- **Employee**: `employee@stockinsight.local` / `admin123`
+Nội dung file `.env` tham khảo:
+```env
+PORT=3001
+NODE_ENV=development
+# Thay đổi thông tin user, pass, db cho đúng với PostgreSQL local của bạn
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/stockinsight?schema=public"
+JWT_SECRET="my-super-secret-key"
+CORS_ORIGIN="http://localhost:5173"
+```
+
+### 3. Khởi tạo Database với Prisma
+
+```bash
+# Đẩy schema vào database để tạo các bảng
+npm run db:push
+
+# (Tùy chọn) Hoặc dùng lệnh migrate nếu bạn muốn theo dõi lịch sử schema thay vì push trực tiếp
+# npm run prisma:migrate
+
+# Chạy seed để nạp dữ liệu mẫu (Admin, Demo data) vào cơ sở dữ liệu
+npm run prisma:seed
+```
+
+### 4. Khởi động server
+
+```bash
+# Chạy ở chế độ dev (sử dụng nodemon, tự reload khi có thay đổi)
+npm run dev
+
+# Hoặc chạy chế độ production
+npm start
+```
+Server backend sẽ chạy mặc định ở `http://localhost:3001`.
+
+## 📜 Tài khoản Demo
+
+Dữ liệu seed cung cấp sẵn các tài khoản sau để bạn đăng nhập thử (mật khẩu chung: `admin123`):
+- **Admin**: `admin@stockinsight.local`
+- **Manager**: `manager@stockinsight.local`
+- **Employee**: `employee@stockinsight.local`
+
+## 📖 Tài liệu API (Swagger UI)
+
+Hệ thống được tích hợp sẵn Swagger để tra cứu và test API một cách trực quan.
+Sau khi khởi động server, hãy mở trình duyệt và truy cập:
+
+👉 **[http://localhost:3001/api-docs](http://localhost:3001/api-docs)**
+
+**Cách test API cần xác thực (Protected Routes):**
+1. Gọi API `POST /api/auth/login`.
+2. Truyền vào email và mật khẩu của tài khoản Demo ở trên, gửi request để nhận về `token`.
+3. Nhấn nút **Authorize** có hình ổ khóa ở góc phải trên cùng màn hình Swagger, dán `token` vào, và chọn lưu. Các request tiếp theo sẽ tự động được gửi kèm header Authorization.
+
+## 🧪 Kiểm thử (Testing)
+
+Dự án dùng Jest và Supertest để viết các Unit Tests và API Integration Tests.
+
+```bash
+# Thiết lập db test trước (nếu cần thiết)
+npm run test:setup
+
+# Chạy tất cả bài test 1 lần
+npm run test
+
+# Chạy test ở chế độ theo dõi (phù hợp khi code)
+npm run test:watch
+
+# Chạy test và tạo báo cáo độ phủ mã nguồn (coverage report)
+npm run test:coverage
+```
+
+## ☁️ Hướng dẫn Triển khai (Deploy lên Production)
+
+Dự án đã được cấu hình sẵn file `render.yaml` giúp deploy Backend tự động lên **Render.com** vô cùng dễ dàng. 
+
+### Các bước trên Render:
+1. Đăng ký/Đăng nhập tại [Render](https://render.com).
+2. Chọn tạo **PostgreSQL Database** mới. Sau khi tạo xong, copy chuỗi kết nối (`Internal Database URL`).
+3. Chọn tạo **Web Service**, kết nối repository chứa source backend này. Render sẽ tự động đọc `render.yaml` để thiết lập.
+4. Mở tab **Environment**, bổ sung các biến môi trường:
+   - `JWT_SECRET`: Nhập vào chuỗi khóa bí mật.
+   - `DATABASE_URL`: Dán URL kết nối PostgreSQL (lấy ở bước 2).
+   - `CORS_ORIGIN`: Domain Frontend của bạn (Vd: `https://stockinsight.vercel.app` hoặc tạm để `*`).
+5. Ở mục `Build Command`, Render sẽ chạy cài đặt tự động. Sau khi Deploy hoàn tất, bạn cần truy cập **Shell** của Render, gõ: `npx prisma db push` và `npm run prisma:seed` để đẩy bảng và nạp dữ liệu vào CSDL online.
 
 ---
-
-## Tài liệu API (Swagger UI)
-
-Hệ thống cung cấp sẵn giao diện kiểm thử API thông qua Swagger UI.
-1. Khởi động server backend (`npm run dev`).
-2. Mở trình duyệt truy cập: `http://localhost:3001/api-docs`.
-3. Để kiểm thử các API yêu cầu xác thực:
-   - Sử dụng API `POST /api/auth/login` và điền tài khoản demo để nhận `token`.
-   - Bấm nút **Authorize** ở góc phải màn hình, điền `token` vào và lưu lại.
-   - Các API khác sẽ tự động sử dụng token này cho các phiên truy cập.
+*Ghi chú: Đồ án thực tập (Giai đoạn 1 - 7).*
