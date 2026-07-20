@@ -6,8 +6,9 @@ async function listAuditLogs(req, res, next) {
   try {
     const action = req.query.action ? String(req.query.action).trim() : null;
     const resource = req.query.resource ? String(req.query.resource).trim() : null;
+    const search = req.query.search ? normalizeSearch(req.query.search) : null;
     const page = toPositiveInt(req.query.page, 1);
-    const limit = Math.min(toPositiveInt(req.query.limit, 10), 100);
+    const limit = Math.min(toPositiveInt(req.query.limit, 20), 100);
     const skip = (page - 1) * limit;
 
     const where = {};
@@ -16,6 +17,13 @@ async function listAuditLogs(req, res, next) {
     }
     if (resource) {
       where.resource = resource;
+    }
+    if (search) {
+      where.OR = [
+        { action: { contains: search, mode: 'insensitive' } },
+        { resource: { contains: search, mode: 'insensitive' } },
+        { resourceId: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const [items, total] = await Promise.all([

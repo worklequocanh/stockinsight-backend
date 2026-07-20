@@ -51,6 +51,8 @@ async function login(req, res, next) {
       email: user.email,
     });
 
+    await writeAuditLog(user.id, 'LOGIN', 'User', user.id, { email: user.email, role: user.role });
+
     return sendSuccess(res, {
       accessToken,
       user: sanitizeUser(user),
@@ -95,6 +97,8 @@ async function updateProfile(req, res, next) {
         updatedAt: true,
       },
     });
+
+    await writeAuditLog(req.user.id, 'UPDATE_PROFILE', 'User', req.user.id, { name });
 
     return sendSuccess(res, { user }, 'Cập nhật hồ sơ thành công');
   } catch (error) {
