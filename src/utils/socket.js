@@ -4,9 +4,11 @@ module.exports = {
   init: (httpServer) => {
     io = require('socket.io')(httpServer, {
       cors: {
-        origin: '*', // For development. Adjust for production
+        origin: (origin, callback) => callback(null, true),
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+        credentials: true,
       },
+      transports: ['websocket', 'polling'],
     });
     return io;
   },

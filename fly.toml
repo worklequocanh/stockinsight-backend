@@ -1,0 +1,38 @@
+# fly.toml app configuration file generated for stockinsight-backend on Fly.io
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "stockinsight-backend"
+primary_region = "sin" # Singapore (Tối ưu độ trễ cho Việt Nam & Đông Nam Á)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3001"
+  NODE_ENV = "production"
+
+# Lệnh chạy tự động trước mỗi lần deploy mới: push schema lên Neon DB (tương thích với DB đã có sẵn dữ liệu)
+[deploy]
+  release_command = "npx prisma db push"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = false # QUAN TRỌNG: Giữ cho socket.io & node-cron luôn hoạt động liên tục
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

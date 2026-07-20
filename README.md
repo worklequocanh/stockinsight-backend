@@ -138,19 +138,50 @@ npm run test:watch
 npm run test:coverage
 ```
 
-## ☁️ Hướng dẫn Triển khai (Deploy lên Production)
+## ☁️ Hướng dẫn Triển khai (Deploy lên Production với Fly.io & Neon DB)
 
-Dự án đã được cấu hình sẵn file `render.yaml` giúp deploy Backend tự động lên **Render.com** vô cùng dễ dàng. 
+Dự án đã được thiết lập chuẩn hóa đầy đủ `Dockerfile`, `.dockerignore` và `fly.toml` giúp bạn triển khai Backend lên nền tảng **Fly.io** kết hợp với cơ sở dữ liệu **Neon PostgreSQL** siêu tốc.
 
-### Các bước trên Render:
-1. Đăng ký/Đăng nhập tại [Render](https://render.com).
-2. Chọn tạo **PostgreSQL Database** mới. Sau khi tạo xong, copy chuỗi kết nối (`Internal Database URL`).
-3. Chọn tạo **Web Service**, kết nối repository chứa source backend này. Render sẽ tự động đọc `render.yaml` để thiết lập.
-4. Mở tab **Environment**, bổ sung các biến môi trường:
-   - `JWT_SECRET`: Nhập vào chuỗi khóa bí mật.
-   - `DATABASE_URL`: Dán URL kết nối PostgreSQL (lấy ở bước 2).
-   - `CORS_ORIGIN`: Domain Frontend của bạn (Vd: `https://stockinsight.vercel.app` hoặc tạm để `*`).
-5. Ở mục `Build Command`, Render sẽ chạy cài đặt tự động. Sau khi Deploy hoàn tất, bạn cần truy cập **Shell** của Render, gõ: `npx prisma db push` và `npm run prisma:seed` để đẩy bảng và nạp dữ liệu vào CSDL online.
+### 🚀 Cách 1: Triển khai lên Fly.io (Khuyên dùng - Chuản Enterprise)
+
+**Yêu cầu:** Đã cài đặt [Fly CLI (flyctl)](https://fly.io/docs/hands-on/install-flyctl/) và đăng nhập (`fly auth login`).
+
+1. **Chuản bị Database trên Neon:**
+   - Đăng ký/đăng nhập tại [Neon.tech](https://neon.tech), tạo một project PostgreSQL mới.
+   - Copy chuỗi kết nối (`Connection String`), ví dụ: `postgresql://neondb_owner:secret@ep-cool-snowflake-123456.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`.
+
+2. **Khởi tạo và cấu hình Secrets trên Fly.io:**
+   Mở terminal tại thư mục `stockinsight-backend` và chạy các lệnh:
+   ```bash
+   # Khởi tạo app trên Fly.io (đã có sẵn fly.toml nên không cần ghi đè cấu hình)
+   fly launch --no-deploy
+
+   # Cài đặt các biến môi trường bảo mật (Secrets)
+   fly secrets set DATABASE_URL="chuỗi_kết_nối_neon_db_của_bạn"
+   fly secrets set JWT_SECRET="mật_khẩu_jwt_siêu_bảo_mật_của_bạn"
+   fly secrets set CORS_ORIGIN="https://stockinsight.vercel.app,https://stockinsight-frontend.fly.dev,*"
+   ```
+
+3. **Triển khai ứng dụng:**
+   ```bash
+   fly deploy
+   ```
+   > 💡 **Lưu ý nghiệp vụ:** Trong file `fly.toml` đã thiết lập lệnh `release_command = "npx prisma migrate deploy"`. Mỗi khi `fly deploy` được chạy, hệ thống sẽ tự động cập nhật schema database trên Neon trước khi khởi động container mới!
+   > Đồng thời `auto_stop_machines = false` giúp cho **Socket.io** (Realtime) và **Node-cron** (cảnh báo tồn kho tự động) hoạt động liên tục 24/7 không bị gián đoạn.
+
+4. **(Tùy chọn) Nạp dữ liệu mẫu (Seed Data) lần đầu:**
+   Nếu đây là lần đầu tiên triển khai lên Neon DB trống, hãy chạy seed qua SSH console của Fly.io:
+   ```bash
+   fly ssh console -C "npm run prisma:seed"
+   ```
 
 ---
-*Ghi chú: Đồ án thực tập (Giai đoạn 1 - 7).*
+
+### 📦 Cách 2: Triển khai lên Render.com (Dự phòng)
+Dự án vẫn giữ cấu hình `render.yaml` nếu bạn muốn duy trì trên Render:
+1. Tạo Web Service kết nối với Github Repo.
+2. Thêm các biến `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN` trong mục Environment.
+3. Chạy `npx prisma db push` và `npm run prisma:seed` trong mục Shell của Render sau khi build xong.
+
+---
+*Ghi chú: Đồ án thực tập (Giai đoạn 1 - 7 - Enterprise WMS & BI).*

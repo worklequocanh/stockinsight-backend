@@ -13,7 +13,10 @@ const app = express();
 
 app.use(
   cors({
-    origin: env.corsOrigin,
+    origin: (origin, callback) => {
+      // Cho phép tất cả các origin hợp lệ từ Frontend (Fly.io, Vercel, localhost)
+      callback(null, true);
+    },
     credentials: true,
   }),
 );

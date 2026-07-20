@@ -9,8 +9,8 @@ async function start() {
   try {
     await prisma.$connect();
 
-    const server = app.listen(env.port, () => {
-      console.log(`Backend is running at http://localhost:${env.port}`);
+    const server = app.listen(env.port, '0.0.0.0', () => {
+      console.log(`Backend is running at http://0.0.0.0:${env.port}`);
     });
 
     // Initialize Socket.io
