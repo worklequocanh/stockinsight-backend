@@ -96,9 +96,10 @@ async function createTransfer(req, res, next) {
       return sendError(res, 'Vui lòng chọn ít nhất một sản phẩm để chuyển kho', 400);
     }
 
+    const preparedItems = [];
     for (const item of items) {
-      if (!item.productId || !item.fromLocationId || !item.toLocationId || !item.quantity || !item.fromBatchId) {
-        return sendError(res, 'Thông tin sản phẩm không hợp lệ (yêu cầu: sản phẩm, vị trí từ, vị trí đến, lô, số lượng)', 400);
+      if (!item.productId || !item.fromLocationId || !item.toLocationId || !item.quantity) {
+        return sendError(res, 'Thông tin sản phẩm không hợp lệ (yêu cầu: sản phẩm, vị trí từ, vị trí đến, số lượng)', 400);
       }
       if (item.quantity <= 0) {
         return sendError(res, 'Số lượng chuyển phải lớn hơn 0', 400);
@@ -106,6 +107,37 @@ async function createTransfer(req, res, next) {
       if (item.fromLocationId === item.toLocationId) {
         return sendError(res, 'Vị trí chuyển đến phải khác vị trí chuyển đi', 400);
       }
+
+      let batchId = String(item.fromBatchId || '').trim();
+      if (!batchId || !batchId.includes('-') || batchId.length < 30) {
+        const activeBatch = await prisma.stockBatch.findFirst({
+          where: {
+            productId: item.productId,
+            locationId: item.fromLocationId || undefined,
+            remainingQuantity: { gte: Number(item.quantity) || 1 }
+          },
+          orderBy: { expiryDate: 'asc' }
+        }) || await prisma.stockBatch.findFirst({
+          where: {
+            productId: item.productId,
+            remainingQuantity: { gt: 0 }
+          },
+          orderBy: { expiryDate: 'asc' }
+        });
+
+        if (!activeBatch) {
+          return sendError(res, `Không tìm thấy lô hàng khả dụng cho sản phẩm ở kho gửi để điều chuyển`, 400);
+        }
+        batchId = activeBatch.id;
+      }
+
+      preparedItems.push({
+        productId: item.productId,
+        fromLocationId: item.fromLocationId,
+        toLocationId: item.toLocationId,
+        quantity: Number(item.quantity),
+        fromBatchId: batchId,
+      });
     }
 
     const receipt = await prisma.internalTransfer.create({
@@ -115,16 +147,15 @@ async function createTransfer(req, res, next) {
         createdById: userId,
         status: ReceiptStatus.PENDING,
         items: {
-          create: items.map(i => ({
-            productId: i.productId,
-            fromLocationId: i.fromLocationId,
-            toLocationId: i.toLocationId,
-            quantity: Number(i.quantity),
-            fromBatchId: i.fromBatchId,
-          })),
+          create: preparedItems,
         }
       },
       include: { items: true }
+    });
+
+    await writeAuditLog(userId, 'CREATE_TRANSFER', 'InternalTransfer', receipt.id, {
+      code: receipt.code,
+      itemCount: preparedItems.length,
     });
 
     return sendSuccess(res, { item: receipt }, 'Tạo phiếu chuyển kho thành công', 201);
