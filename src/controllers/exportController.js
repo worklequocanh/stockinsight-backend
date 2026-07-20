@@ -1,6 +1,7 @@
 const prisma = require('../config/prisma');
 const { writeAuditLog } = require('../utils/auditLog');
 const { getIO } = require('../utils/socket');
+const { sendSuccess, sendError } = require('../utils/apiResponse');
 
 exports.listExports = async (req, res, next) => {
   try {
@@ -80,19 +81,20 @@ exports.getExportById = async (req, res, next) => {
 
 exports.createExport = async (req, res, next) => {
   try {
-    const { exportType, note, items, customerId } = req.body;
+    const exportType = req.body?.exportType || 'SALE';
+    const { note, items, customerId } = req.body;
     
     if (!items || items.length === 0) {
-      return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất một sản phẩm' });
+      return sendError(res, 'Vui lòng chọn ít nhất một sản phẩm', 400);
     }
 
     if (exportType === 'SALE') {
       if (!customerId) {
-        return res.status(400).json({ success: false, message: 'Vui lòng chọn khách hàng khi xuất bán' });
+        return sendError(res, 'Vui lòng chọn khách hàng khi xuất bán', 400);
       }
       const customer = await prisma.customer.findUnique({ where: { id: customerId } });
       if (!customer) {
-        return res.status(400).json({ success: false, message: 'Không tìm thấy khách hàng' });
+        return sendError(res, 'Không tìm thấy khách hàng', 400);
       }
     }
 
@@ -103,7 +105,7 @@ exports.createExport = async (req, res, next) => {
           code: `EXP-${Date.now()}`,
           exportType,
           customerId: exportType === 'SALE' ? customerId : null,
-          note,
+          note: note || null,
           createdById: req.user.id,
           status: 'PENDING',
         },
@@ -153,10 +155,15 @@ exports.createExport = async (req, res, next) => {
       return receipt;
     });
 
-    res.status(201).json({ success: true, data: result });
+    await writeAuditLog(req.user.id, 'CREATE_EXPORT', 'ExportReceipt', result.id, {
+      exportType,
+      itemCount: items.length,
+    });
+
+    return sendSuccess(res, { item: result }, 'Tạo phiếu xuất kho thành công', 201);
   } catch (error) {
     if (error.message.includes('không đủ tồn kho')) {
-      return res.status(400).json({ success: false, message: error.message });
+      return sendError(res, error.message, 400);
     }
     next(error);
   }
@@ -223,11 +230,11 @@ exports.approveExport = async (req, res, next) => {
       console.error('Socket emit error:', err);
     }
 
-    res.json({ success: true, data: result });
+    return sendSuccess(res, { item: result }, 'Duyệt phiếu xuất thành công');
   } catch (error) {
-    if (error.message === 'Không tìm thấy phiếu xuất') return res.status(404).json({ success: false, message: error.message });
-    if (error.message === 'Phiếu xuất không ở trạng thái Chờ Duyệt') return res.status(400).json({ success: false, message: error.message });
-    if (error.message.includes('Tồn kho lô')) return res.status(400).json({ success: false, message: error.message });
+    if (error.message === 'Không tìm thấy phiếu xuất') return sendError(res, error.message, 404);
+    if (error.message === 'Phiếu xuất không ở trạng thái Chờ Duyệt') return sendError(res, error.message, 400);
+    if (error.message.includes('Tồn kho lô')) return sendError(res, error.message, 400);
     next(error);
   }
 };
@@ -238,12 +245,12 @@ exports.rejectExport = async (req, res, next) => {
     const { reason } = req.body;
 
     if (!reason) {
-      return res.status(400).json({ success: false, message: 'Vui lòng nhập lý do từ chối' });
+      return sendError(res, 'Vui lòng nhập lý do từ chối', 400);
     }
 
     const receipt = await prisma.exportReceipt.findUnique({ where: { id } });
-    if (!receipt) return res.status(404).json({ success: false, message: 'Không tìm thấy phiếu xuất' });
-    if (receipt.status !== 'PENDING') return res.status(400).json({ success: false, message: 'Phiếu xuất không ở trạng thái Chờ Duyệt' });
+    if (!receipt) return sendError(res, 'Không tìm thấy phiếu xuất', 404);
+    if (receipt.status !== 'PENDING') return sendError(res, 'Phiếu xuất không ở trạng thái Chờ Duyệt', 400);
 
     const updated = await prisma.exportReceipt.update({
       where: { id },
@@ -259,7 +266,7 @@ exports.rejectExport = async (req, res, next) => {
       reason,
     });
 
-    res.json({ success: true, data: updated });
+    return sendSuccess(res, { item: updated }, 'Đã từ chối phiếu xuất');
   } catch (error) {
     next(error);
   }

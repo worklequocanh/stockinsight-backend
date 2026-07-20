@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { mapPrismaError } = require('../utils/prismaError');
 const { normalizeSearch, toPositiveInt } = require('../utils/request');
+const { writeAuditLog } = require('../utils/auditLog');
 const QRCode = require('qrcode');
 
 function buildWhere({ search, categoryId, supplierId }) {
@@ -169,6 +170,8 @@ async function createProduct(req, res, next) {
       },
     });
 
+    await writeAuditLog(req.user?.id, 'CREATE_PRODUCT', 'Product', item.id, { sku, name });
+
     return sendSuccess(res, { item }, 'Thêm sản phẩm thành công', 201);
   } catch (error) {
     const mapped = mapPrismaError(error);
@@ -191,7 +194,6 @@ async function updateProduct(req, res, next) {
     const minStock = parseNumber(req.body?.minStock, 0);
     const costPrice = parseNumber(req.body?.costPrice);
     const salePrice = parseNumber(req.body?.salePrice);
-    const currentStock = parseNumber(req.body?.currentStock, 0);
 
     if (!sku || !name || !unit || !categoryId || !supplierId || costPrice === null || salePrice === null) {
       return sendError(res, 'Vui lòng điền đầy đủ các thông tin bắt buộc', 400, [
@@ -210,25 +212,32 @@ async function updateProduct(req, res, next) {
       return sendError(res, refError, 400);
     }
 
+    const updateData = {
+      sku,
+      barcode: barcode || null,
+      name,
+      unit,
+      minStock,
+      costPrice,
+      salePrice,
+      categoryId,
+      supplierId,
+    };
+
+    if (req.body?.currentStock !== undefined && req.body?.currentStock !== null) {
+      updateData.currentStock = parseNumber(req.body.currentStock, 0);
+    }
+
     const item = await prisma.product.update({
       where: { id },
-      data: {
-        sku,
-        barcode: barcode || null,
-        name,
-        unit,
-        minStock,
-        costPrice,
-        salePrice,
-        currentStock,
-        categoryId,
-        supplierId,
-      },
+      data: updateData,
       include: {
         category: true,
         supplier: true,
       },
     });
+
+    await writeAuditLog(req.user?.id, 'UPDATE_PRODUCT', 'Product', item.id, { sku, name });
 
     return sendSuccess(res, { item }, 'Cập nhật sản phẩm thành công');
   } catch (error) {
@@ -243,9 +252,12 @@ async function updateProduct(req, res, next) {
 async function deleteProduct(req, res, next) {
   try {
     const { id } = req.params;
+    const existing = await prisma.product.findUnique({ where: { id } });
     await prisma.product.delete({
       where: { id },
     });
+
+    await writeAuditLog(req.user?.id, 'DELETE_PRODUCT', 'Product', id, { sku: existing?.sku, name: existing?.name });
 
     return sendSuccess(res, null, 'Xóa sản phẩm thành công');
   } catch (error) {
