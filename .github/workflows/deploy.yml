@@ -1,0 +1,28 @@
+name: 🚀 Deploy Backend to Fly.io
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Cho phép chạy thủ công từ GitHub Actions UI
+
+jobs:
+  deploy:
+    name: Deploy Backend to Fly.io
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: ⬇️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: 🏗️ Build & Deploy
+        run: |
+          flyctl deploy \
+            --remote-only \
+            --app stockinsight-backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
