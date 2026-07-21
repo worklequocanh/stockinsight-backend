@@ -70,6 +70,7 @@ async function getImportById(req, res, next) {
           include: {
             product: true,
             batch: true,
+            location: true,
           }
         },
       },
