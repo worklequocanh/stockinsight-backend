@@ -10,8 +10,8 @@ const {
 } = require('../controllers/locationController');
 
 const router = express.Router();
-
-router.use(authenticate, requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER));
+router.use(authenticate);
+const managerAuth = requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER);
 
 /**
  * @swagger
@@ -70,7 +70,7 @@ router.get('/:id', getLocationById);
  *       201:
  *         description: Created
  */
-router.post('/', createLocation);
+router.post('/', managerAuth, createLocation);
 /**
  * @swagger
  * /api/locations/{id}:
@@ -102,7 +102,7 @@ router.post('/', createLocation);
  *       200:
  *         description: Success
  */
-router.put('/:id', updateLocation);
+router.put('/:id', managerAuth, updateLocation);
 /**
  * @swagger
  * /api/locations/{id}:
@@ -121,6 +121,6 @@ router.put('/:id', updateLocation);
  *       200:
  *         description: Success
  */
-router.delete('/:id', deleteLocation);
+router.delete('/:id', managerAuth, deleteLocation);
 
 module.exports = router;

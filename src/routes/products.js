@@ -12,8 +12,8 @@ const {
 } = require('../controllers/productController');
 
 const router = express.Router();
-
-router.use(authenticate, requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER));
+router.use(authenticate);
+const managerAuth = requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER);
 
 /**
  * @swagger
@@ -98,7 +98,7 @@ router.get('/:id', getProductById);
  *       201:
  *         description: Created
  */
-router.post('/', createProduct);
+router.post('/', managerAuth, createProduct);
 /**
  * @swagger
  * /api/products/{id}:
@@ -123,7 +123,7 @@ router.post('/', createProduct);
  *       200:
  *         description: Success
  */
-router.put('/:id', updateProduct);
+router.put('/:id', managerAuth, updateProduct);
 /**
  * @swagger
  * /api/products/{id}:
@@ -142,7 +142,7 @@ router.put('/:id', updateProduct);
  *       200:
  *         description: Success
  */
-router.delete('/:id', deleteProduct);
+router.delete('/:id', managerAuth, deleteProduct);
 /**
  * @swagger
  * /api/products/batches/{batchId}/location:
@@ -170,6 +170,6 @@ router.delete('/:id', deleteProduct);
  *       200:
  *         description: Success
  */
-router.patch('/batches/:batchId/location', updateBatchLocation);
+router.patch('/batches/:batchId/location', managerAuth, updateBatchLocation);
 
 module.exports = router;

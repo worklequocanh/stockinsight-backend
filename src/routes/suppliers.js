@@ -10,8 +10,8 @@ const {
 } = require('../controllers/supplierController');
 
 const router = express.Router();
-
-router.use(authenticate, requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER));
+router.use(authenticate);
+const managerAuth = requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER);
 
 /**
  * @swagger
@@ -70,7 +70,7 @@ router.get('/:id', getSupplierById);
  *       201:
  *         description: Created
  */
-router.post('/', createSupplier);
+router.post('/', managerAuth, createSupplier);
 /**
  * @swagger
  * /api/suppliers/{id}:
@@ -95,7 +95,7 @@ router.post('/', createSupplier);
  *       200:
  *         description: Success
  */
-router.put('/:id', updateSupplier);
+router.put('/:id', managerAuth, updateSupplier);
 /**
  * @swagger
  * /api/suppliers/{id}:
@@ -114,6 +114,6 @@ router.put('/:id', updateSupplier);
  *       200:
  *         description: Success
  */
-router.delete('/:id', deleteSupplier);
+router.delete('/:id', managerAuth, deleteSupplier);
 
 module.exports = router;

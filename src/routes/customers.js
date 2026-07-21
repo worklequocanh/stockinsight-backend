@@ -10,8 +10,8 @@ const {
 } = require('../controllers/customerController');
 
 const router = express.Router();
-
-router.use(authenticate, requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER));
+router.use(authenticate);
+const managerAuth = requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER);
 
 /**
  * @swagger
@@ -72,7 +72,7 @@ router.get('/:id', getCustomerById);
  *       201:
  *         description: Created
  */
-router.post('/', createCustomer);
+router.post('/', managerAuth, createCustomer);
 /**
  * @swagger
  * /api/customers/{id}:
@@ -106,7 +106,7 @@ router.post('/', createCustomer);
  *       200:
  *         description: Success
  */
-router.put('/:id', updateCustomer);
+router.put('/:id', managerAuth, updateCustomer);
 /**
  * @swagger
  * /api/customers/{id}:
@@ -125,6 +125,6 @@ router.put('/:id', updateCustomer);
  *       200:
  *         description: Success
  */
-router.delete('/:id', deleteCustomer);
+router.delete('/:id', managerAuth, deleteCustomer);
 
 module.exports = router;
