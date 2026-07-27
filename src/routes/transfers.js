@@ -7,6 +7,7 @@ const {
   createTransfer,
   approveTransfer,
   rejectTransfer,
+  getAvailableBatches,
 } = require('../controllers/transferController');
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 router.use(authenticate, requireRoles(Role.ADMIN, Role.WAREHOUSE_MANAGER));
 
 router.get('/', listTransfers);
+router.get('/available-batches', getAvailableBatches);
 router.get('/:id', getTransferById);
 router.post('/', createTransfer);
 router.post('/:id/approve', approveTransfer);

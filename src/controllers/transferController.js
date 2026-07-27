@@ -315,10 +315,32 @@ async function rejectTransfer(req, res, next) {
   }
 }
 
+async function getAvailableBatches(req, res, next) {
+  try {
+    const { productId } = req.query;
+    const where = { remainingQuantity: { gt: 0 } };
+    if (productId) where.productId = productId;
+
+    const batches = await prisma.stockBatch.findMany({
+      where,
+      orderBy: { expiryDate: 'asc' },
+      include: {
+        product: { select: { id: true, sku: true, name: true, unit: true } },
+        location: { select: { id: true, code: true, name: true } },
+      },
+    });
+
+    return sendSuccess(res, { batches });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   listTransfers,
   getTransferById,
   createTransfer,
   approveTransfer,
   rejectTransfer,
+  getAvailableBatches,
 };
